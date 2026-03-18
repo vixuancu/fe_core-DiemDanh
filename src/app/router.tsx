@@ -1,0 +1,83 @@
+import { createBrowserRouter, Navigate } from 'react-router';
+
+// Layout & Guards
+import { AppShell } from './layouts/AppShell';
+import { AuthGuard } from '@/features/auth/guards/AuthGuard';
+import { RoleGuard } from '@/features/auth/guards/RoleGuard';
+
+// Auth pages
+import { LoginPage } from '@/app/components/login-page';
+
+// Pages (import từ components cũ — sẽ dần migrate theo từng phase)
+import { DashboardPage } from '@/app/components/dashboard-page';
+import { SinhVienPage } from '@/app/components/sinh-vien-page';
+import { LopTinChiPage } from '@/app/components/lop-tin-chi-page';
+import { PhongHocPage } from '@/app/components/phong-hoc-page';
+import { LichHocPage } from '@/app/components/lich-hoc-page';
+import { DiemDanhPage } from '@/app/components/diem-danh-page';
+import { KetQuaDiemDanhPage } from '@/app/components/ket-qua-diem-danh-page';
+import { LichSuPage } from '@/app/components/lich-su-page';
+import { BaoCaoPage } from '@/app/components/bao-cao-page';
+import { CameraPage } from '@/app/components/camera-page';
+import { TaiKhoanPage } from '@/app/components/tai-khoan-page';
+import { DoiMatKhauPage } from '@/app/components/doi-mat-khau-page';
+
+export const router = createBrowserRouter([
+  // Public routes
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
+
+  // Protected routes — cần đăng nhập
+  {
+    element: <AuthGuard />,
+    children: [
+      {
+        element: <AppShell />,
+        children: [
+          // Redirect / → /dashboard
+          { index: true, element: <Navigate to="/dashboard" replace /> },
+
+          // ── Tất cả role ─────────────────────────────────────────────────
+          { path: 'dashboard', element: <DashboardPage /> },
+          { path: 'lich-hoc', element: <LichHocPage /> },
+          { path: 'lich-su', element: <LichSuPage /> },
+          { path: 'doi-mat-khau', element: <DoiMatKhauPage /> },
+
+          // ── Admin + Giáo vụ ──────────────────────────────────────────────
+          {
+            element: <RoleGuard allowedRoles={['admin', 'giao_vu']} />,
+            children: [
+              { path: 'sinh-vien', element: <SinhVienPage /> },
+              { path: 'lop-tin-chi', element: <LopTinChiPage /> },
+              { path: 'phong-hoc', element: <PhongHocPage /> },
+              { path: 'diem-danh', element: <DiemDanhPage /> },
+              { path: 'bao-cao', element: <BaoCaoPage /> },
+            ],
+          },
+
+          // ── Chỉ Giảng viên ───────────────────────────────────────────────
+          {
+            element: <RoleGuard allowedRoles={['giang_vien']} />,
+            children: [
+              { path: 'ket-qua-diem-danh', element: <KetQuaDiemDanhPage /> },
+            ],
+          },
+
+          // ── Chỉ Admin ────────────────────────────────────────────────────
+          {
+            element: <RoleGuard allowedRoles={['admin']} />,
+            children: [
+              { path: 'camera', element: <CameraPage /> },
+              { path: 'tai-khoan', element: <TaiKhoanPage /> },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+
+  // Fallback — redirect về dashboard
+  { path: '*', element: <Navigate to="/dashboard" replace /> },
+]);
