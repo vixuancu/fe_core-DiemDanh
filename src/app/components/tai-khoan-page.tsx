@@ -29,7 +29,6 @@ export function TaiKhoanPage() {
   const [hoTen, setHoTen] = useState('');
   const [email, setEmail] = useState('');
   const [soDienThoai, setSoDienThoai] = useState('');
-  const [donVi, setDonVi] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('giang_vien');
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,9 +58,9 @@ export function TaiKhoanPage() {
   const stats = statsData ?? { total: 0, giaoVu: 0, giangVien: 0, active: 0, locked: 0 };
 
   const handleCreate = () => {
-    if (!hoTen || !email || !donVi) return;
+    if (!hoTen || !email) return;
     createMutation.mutate(
-      { hoTen, email, role: selectedRole, soDienThoai, donVi },
+      { hoTen, email, role: selectedRole, soDienThoai },
       { onSuccess: () => setShowModal(false) }
     );
   };
@@ -95,7 +94,6 @@ export function TaiKhoanPage() {
           setHoTen('');
           setEmail('');
           setSoDienThoai('');
-          setDonVi('');
           setSelectedRole('giang_vien');
           setShowModal(true);
         }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer">
@@ -327,25 +325,14 @@ export function TaiKhoanPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1 text-sm">Số điện thoại</label>
-                  <input 
-                    value={soDienThoai}
-                    onChange={e => setSoDienThoai(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30" 
-                    placeholder="Nhập SĐT" 
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1 text-sm">Đơn vị <span className="text-red-500">*</span></label>
-                  <input 
-                    value={donVi}
-                    onChange={e => setDonVi(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30" 
-                    placeholder="VD: Khoa CNTT" 
-                  />
-                </div>
+              <div>
+                <label className="block mb-1 text-sm">Số điện thoại</label>
+                <input 
+                  value={soDienThoai}
+                  onChange={e => setSoDienThoai(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30" 
+                  placeholder="Nhập SĐT" 
+                />
               </div>
               <div>
                 <label className="block mb-1 text-sm">Mật khẩu mặc định</label>
@@ -362,7 +349,7 @@ export function TaiKhoanPage() {
               <button 
                 onClick={handleCreate} 
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] cursor-pointer disabled:opacity-50"
-                disabled={createMutation.isPending || !hoTen || !email || !donVi}
+                disabled={createMutation.isPending || !hoTen || !email}
               >
                 {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 Tạo tài khoản

@@ -94,7 +94,6 @@ export interface TaiKhoan {
   email: string;
   soDienThoai: string;
   role: UserRole;
-  donVi: string;
   trangThai: 'active' | 'locked';
   ngayTao: string;
 }
@@ -125,14 +124,14 @@ export const mockGiangVien: GiangVien[] = [
 ];
 
 export const mockTaiKhoan: TaiKhoan[] = [
-  { id: '2', hoTen: 'Trần Thị Giáo Vụ', email: 'giaovu@edu.vn', soDienThoai: '0909111222', role: 'giao_vu', donVi: 'Phòng Đào tạo', trangThai: 'active', ngayTao: '01/09/2025' },
-  { id: '10', hoTen: 'Phạm Văn Hùng', email: 'hung.pv@edu.vn', soDienThoai: '0909111333', role: 'giao_vu', donVi: 'Phòng Đào tạo', trangThai: 'active', ngayTao: '15/09/2025' },
-  { id: '3', hoTen: 'Đỗ Duy Trình', email: 'trinh.dd@edu.vn', soDienThoai: '0912345678', role: 'giang_vien', donVi: 'Khoa Công nghệ thông tin', trangThai: 'active', ngayTao: '01/09/2025' },
-  { id: '5', hoTen: 'Vũ Xuân Hạnh', email: 'hanh.vx@edu.vn', soDienThoai: '0912345679', role: 'giang_vien', donVi: 'Khoa Công nghệ thông tin', trangThai: 'active', ngayTao: '01/09/2025' },
-  { id: '6', hoTen: 'Nguyễn Thị Lan', email: 'lan.nt@edu.vn', soDienThoai: '0912345680', role: 'giang_vien', donVi: 'Khoa Khoa học máy tính', trangThai: 'active', ngayTao: '05/09/2025' },
-  { id: '7', hoTen: 'Trần Minh Quang', email: 'quang.tm@edu.vn', soDienThoai: '0912345681', role: 'giang_vien', donVi: 'Khoa Hệ thống thông tin', trangThai: 'locked', ngayTao: '05/09/2025' },
-  { id: '11', hoTen: 'Lê Văn Sơn', email: 'son.lv@edu.vn', soDienThoai: '0912345682', role: 'giang_vien', donVi: 'Khoa Công nghệ thông tin', trangThai: 'active', ngayTao: '10/10/2025' },
-  { id: '12', hoTen: 'Nguyễn Hải Yến', email: 'yen.nh@edu.vn', soDienThoai: '0912345683', role: 'giang_vien', donVi: 'Khoa Toán - Tin', trangThai: 'active', ngayTao: '10/10/2025' },
+  { id: '2', hoTen: 'Trần Thị Giáo Vụ', email: 'giaovu@edu.vn', soDienThoai: '0909111222', role: 'giao_vu', trangThai: 'active', ngayTao: '01/09/2025' },
+  { id: '10', hoTen: 'Phạm Văn Hùng', email: 'hung.pv@edu.vn', soDienThoai: '0909111333', role: 'giao_vu', trangThai: 'active', ngayTao: '15/09/2025' },
+  { id: '3', hoTen: 'Đỗ Duy Trình', email: 'trinh.dd@edu.vn', soDienThoai: '0912345678', role: 'giang_vien', trangThai: 'active', ngayTao: '01/09/2025' },
+  { id: '5', hoTen: 'Vũ Xuân Hạnh', email: 'hanh.vx@edu.vn', soDienThoai: '0912345679', role: 'giang_vien', trangThai: 'active', ngayTao: '01/09/2025' },
+  { id: '6', hoTen: 'Nguyễn Thị Lan', email: 'lan.nt@edu.vn', soDienThoai: '0912345680', role: 'giang_vien', trangThai: 'active', ngayTao: '05/09/2025' },
+  { id: '7', hoTen: 'Trần Minh Quang', email: 'quang.tm@edu.vn', soDienThoai: '0912345681', role: 'giang_vien', trangThai: 'locked', ngayTao: '05/09/2025' },
+  { id: '11', hoTen: 'Lê Văn Sơn', email: 'son.lv@edu.vn', soDienThoai: '0912345682', role: 'giang_vien', trangThai: 'active', ngayTao: '10/10/2025' },
+  { id: '12', hoTen: 'Nguyễn Hải Yến', email: 'yen.nh@edu.vn', soDienThoai: '0912345683', role: 'giang_vien', trangThai: 'active', ngayTao: '10/10/2025' },
 ];
 
 export const mockPhongHoc: PhongHoc[] = [

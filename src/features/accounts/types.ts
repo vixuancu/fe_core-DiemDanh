@@ -16,7 +16,6 @@ export interface CreateAccountDto {
   email: string;
   role: UserRole;
   soDienThoai?: string;
-  donVi?: string;
 }
 
 export interface UpdateAccountDto {
