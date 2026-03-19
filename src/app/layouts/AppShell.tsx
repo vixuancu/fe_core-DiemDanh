@@ -52,30 +52,33 @@ export function AppShell() {
   return (
     <div className="min-h-screen flex bg-[#f0f4f8]">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-0 overflow-hidden'} bg-white border-r border-border flex flex-col transition-all duration-300 shrink-0`}>
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-border shrink-0">
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-border flex flex-col transition-all duration-300 shrink-0 z-20`}>
+        <div className={`h-16 flex items-center ${sidebarOpen ? 'gap-3 px-5' : 'justify-center px-0'} border-b border-border shrink-0 transition-padding duration-300`}>
           <div className="w-9 h-9 rounded-lg bg-[#009dd9] flex items-center justify-center shrink-0">
             <ScanFace className="w-5 h-5 text-white" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm text-[#009dd9] truncate">Hệ thống điểm danh</p>
-            <p className="text-xs text-muted-foreground truncate">Nhận dạng khuôn mặt</p>
-          </div>
+          {sidebarOpen && (
+            <div className="min-w-0">
+              <p className="text-sm text-[#009dd9] font-medium truncate">Hệ thống điểm danh</p>
+              <p className="text-xs text-muted-foreground truncate">Nhận dạng khuôn mặt</p>
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1">
           {filteredNav.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition text-sm w-full text-left ${
+              title={!sidebarOpen ? item.label : undefined}
+              className={`flex items-center ${sidebarOpen ? 'gap-3 px-3 justify-start' : 'justify-center px-0'} py-2.5 rounded-lg transition-colors text-sm w-full ${
                 location.pathname === item.path
                   ? 'bg-[#009dd9] text-white'
                   : 'text-foreground hover:bg-[#009dd9]/5 hover:text-[#009dd9]'
               }`}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              <div className="shrink-0">{item.icon}</div>
+              {sidebarOpen && <span className="truncate">{item.label}</span>}
             </Link>
           ))}
         </nav>
@@ -83,10 +86,11 @@ export function AppShell() {
         <div className="p-3 border-t border-border">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 transition cursor-pointer"
+            title={!sidebarOpen ? "Đăng xuất" : undefined}
+            className={`flex items-center ${sidebarOpen ? 'gap-3 px-3 justify-start' : 'justify-center px-0'} w-full py-2.5 rounded-lg text-sm text-red-500 hover:bg-red-50 transition cursor-pointer`}
           >
-            <LogOut className="w-5 h-5" />
-            <span>Đăng xuất</span>
+            <div className="shrink-0"><LogOut className="w-5 h-5" /></div>
+            {sidebarOpen && <span className="truncate">Đăng xuất</span>}
           </button>
         </div>
       </aside>
