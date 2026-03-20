@@ -69,7 +69,7 @@ Trong file `.env` (bạn hãy tạo từ `.env.example`), cấu hình:
 ```env
 VITE_DATA_SOURCE=api
 # Có thể trỏ Backend URL tại đây:
-VITE_API_BASE_URL=http://localhost:8000/api
+VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
 
 ### Bước 3: Xem kết quả

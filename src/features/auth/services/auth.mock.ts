@@ -11,9 +11,12 @@ const MOCK_USERS: User[] = [
 let _currentUser: User | null = null;
 
 export const authMock: IAuthService = {
-  async login({ email }) {
+  async login({ username }) {
     await delay(300);
-    const found = MOCK_USERS.find((u) => u.email === email);
+    const input = username.trim().toLowerCase();
+    const found = MOCK_USERS.find(
+      (u) => u.email.toLowerCase() === input || u.email.split('@')[0] === input,
+    );
     // Fallback: nếu nhập email bất kỳ vẫn login thành công (demo mode)
     const user = found ?? MOCK_USERS[1];
     _currentUser = user;

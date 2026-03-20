@@ -14,7 +14,7 @@ import type { UserRole } from '@/shared/types';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   /** Chuyển role nhanh trong demo mode */
   switchRole: (role: UserRole) => void;
@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     try {
-      const u = await authService.login({ email, password });
+      const u = await authService.login({ username, password });
       setUser(u);
       return true;
     } catch {

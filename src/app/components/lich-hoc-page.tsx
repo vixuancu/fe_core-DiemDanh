@@ -16,9 +16,9 @@ import { PortableSelect } from './ui/portable-form-controls';
 const daysOfWeek = [2, 3, 4, 5, 6, 7, 8];
 const caHocs = ['Sáng', 'Chiều', 'Tối'] as const;
 const caHocTiet: Record<string, string> = {
-  'Sáng': 'Tiết 1-4',
-  'Chiều': 'Tiết 5-8',
-  'Tối': 'Tiết 9-12',
+  'Sáng': '',
+  'Chiều': '',
+  'Tối': '',
 };
 
 const thuLabels: Record<number, string> = {
@@ -241,13 +241,16 @@ export function LichHocPage() {
 
   const giangVienIdFilter = isGiangVien ? user.id : undefined;
 
-  const { data, isLoading, isError, error } = useSchedules({
+  const { data, isLoading: isSchedulesLoading, isError, error } = useSchedules({
     tuNgay,
     denNgay,
     giangVienId: giangVienIdFilter,
     perPage: 100 // Tùy chỉnh phân trang sau
   });
   
+  const { phongOptions: dsPhong, isLoading: isOptionsLoading } = useScheduleOptions();
+  const isLoading = isSchedulesLoading || isOptionsLoading;
+
   const { mutate: deleteSchedule } = useDeleteSchedule();
   const schedules = data?.data ?? [];
 
@@ -299,77 +302,116 @@ export function LichHocPage() {
               <Loader2 className="w-6 h-6 animate-spin" />
               <span className="ml-2 font-medium">Đang tải lịch dạy...</span>
             </div>
-          ) : (
-            <table className="w-full text-sm border-collapse table-fixed min-w-[768px]">
+          ) : isGiangVien ? (
+            <table className="w-full text-sm border-collapse table-fixed">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-border">
-                  <th className="w-20 md:w-28 border-r border-border py-4 px-1 text-center font-semibold text-muted-foreground uppercase tracking-wider text-xs">CA HỌC</th>
+                <tr className="bg-muted/50">
+                  <th className="border border-border py-4 px-2 text-center font-normal text-muted-foreground uppercase text-xs w-20 md:w-28">CA HỌC</th>
                   {weekDates.map(d => (
-                    <th key={d.thu} className="border-r border-border py-4 px-1 text-center last:border-r-0">
-                      <div className="font-semibold text-foreground/80">{thuLabels[d.thu]}</div>
-                      <div className="text-[11px] font-normal text-muted-foreground mt-1">{d.date}</div>
+                    <th key={d.thu} className="border border-border py-4 px-1.5 text-center text-muted-foreground">
+                      <div className="font-normal uppercase text-[13px]">{thuLabels[d.thu]}</div>
+                      <div className="text-xs font-normal mt-1">{d.date}</div>
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {caHocs.map(ca => (
-                  <tr key={ca} className="border-b border-border last:border-b-0">
-                    <td className="border-r border-border py-6 px-3 text-center align-top bg-slate-50/30">
-                      <div className="font-medium text-foreground/80">{ca}</div>
-                      <div className="text-xs font-normal text-muted-foreground mt-1">{caHocTiet[ca]}</div>
+                  <tr key={ca}>
+                    <td className="border border-border py-4 px-2 text-center align-middle bg-slate-50/10">
+                      <div className="font-semibold text-sm text-slate-700">{ca}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{caHocTiet[ca]}</div>
                     </td>
                     {daysOfWeek.map(thu => {
                       const lessons = schedules.filter(l => l.thu === thu && l.caHoc === ca);
                       return (
-                        <td key={thu} className="border-r border-border py-3 px-3 align-top min-h-[140px] last:border-r-0">
-                          <div className="flex flex-col gap-3">
-                            {lessons.map(lesson => (
-                              <div key={lesson.id} className="bg-[#f0f9ff] border border-[#bae6fd] rounded-xl p-3 shadow-sm group">
-                                <h4 className="text-[13px] font-medium text-[#0369a1] mb-1 leading-snug text-center">{lesson.tenMonHoc}</h4>
-                                <div className="space-y-0.5">
-                                  <p className="text-[11px] text-[#075985] text-center">
-                                    Tiết: {lesson.tietBatDau}-{lesson.tietKetThuc}
-                                  </p>
-                                  <p className="text-[11px] text-[#075985] text-center break-words px-1">
-                                    Mã lớp: {lesson.maLop}
-                                  </p>
-                                  
-                                  {isGiangVien ? (
-                                    <p className="text-[11px] text-[#075985] text-center pt-1">
-                                      Phòng: {lesson.tenPhong}
-                                    </p>
-                                  ) : (
-                                    <>
-                                      <p className="text-[11px] text-[#075985] text-center pt-1">
-                                        GV: {lesson.tenGiangVien}
-                                      </p>
-                                      <p className="text-[11px] text-[#075985] text-center">
-                                        Phòng: {lesson.tenPhong}
-                                      </p>
-                                    </>
-                                  )}
-                                </div>
-                                
-                                {/* Always Visible Actions for Admin/Giáo Vụ */}
-                                {isAdminOrVu && (
-                                  <div className="flex justify-center items-center gap-3 mt-3">
-                                    <button className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
-                                      <Edit className="w-[14px] h-[14px]" />
-                                    </button>
-                                    <button onClick={() => handleDelete(lesson.id, lesson.tenMonHoc)} className="text-red-400 hover:text-red-600 transition-colors cursor-pointer">
-                                      <Trash2 className="w-[14px] h-[14px]" />
-                                    </button>
-                                  </div>
-                                )}
+                        <td key={thu} className="border border-border p-2 align-top h-auto bg-white min-h-[140px]">
+                          {lessons.map(lesson => (
+                            <div key={lesson.id} className="bg-[#f0f9ff]/5 border border-[#009dd9]/20 shadow-sm rounded-xl p-3 mb-2 last:mb-0 flex flex-col justify-between">
+                              <p className="text-[13px] font-bold text-slate-700 text-center break-words mb-2">{lesson.tenMonHoc}</p>
+                              <div className="flex flex-col gap-0.5">
+                                <p className="text-[11px] text-slate-500 text-center shrink-0">
+                                  Tiết: <span className="text-slate-600">{lesson.tietBatDau}-{lesson.tietKetThuc}</span>
+                                </p>
+                                <p className="text-[11px] text-slate-500 text-center break-all shrink-0">
+                                  Mã lớp: <span className="text-slate-600">{lesson.maLop}</span>
+                                </p>
+                                <p className="text-[11px] text-slate-500 text-center break-words shrink-0 mt-1">
+                                  Phòng: <span className="text-slate-600">{lesson.tenPhong}</span>
+                                </p>
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
                         </td>
                       );
                     })}
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-sm border-collapse table-fixed min-w-[900px]">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="border border-border p-0 relative w-32 align-top bg-muted/50">
+                    <div className="relative w-full h-full min-h-[64px]">
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+                        <line x1="0" y1="0" x2="100%" y2="100%" stroke="currentColor" strokeWidth="1" className="text-border" />
+                      </svg>
+                      <div className="absolute top-3 right-3 text-[11px] font-normal text-muted-foreground uppercase">Ngày</div>
+                      <div className="absolute bottom-3 left-3 text-[11px] font-normal text-muted-foreground uppercase">Phòng</div>
+                    </div>
+                  </th>
+                  {weekDates.map(d => (
+                    <th key={d.thu} className="border border-border py-4 px-1.5 text-center text-muted-foreground">
+                      <div className="font-normal uppercase text-[13px]">{thuLabels[d.thu]}</div>
+                      <div className="text-xs font-normal mt-1">{d.date}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dsPhong.map(phong => {
+                  return (
+                    <tr key={phong.id}>
+                      <td className="border border-border py-4 px-2 text-center align-middle font-medium text-xs text-slate-700 bg-slate-50/10">
+                        {phong.tenPhong}
+                      </td>
+                      {daysOfWeek.map(thu => {
+                        const lessons = schedules.filter(l => l.thu === thu && l.phongHocId === phong.id);
+                        return (
+                          <td key={thu} className="border border-border py-2 px-2 align-top bg-white min-h-[140px]">
+                            {lessons.map(lesson => (
+                              <div key={lesson.id} className="bg-[#f0f9ff]/50 border border-[#009dd9]/20 rounded-xl p-3 mb-2 last:mb-0 flex flex-col justify-between mx-auto w-full max-w-[95%]">
+                                <p className="text-[13px] font-bold text-slate-700 text-center break-words mb-2">{lesson.tenMonHoc}</p>
+                                <div className="flex flex-col gap-0.5">
+                                  <p className="text-[11px] text-slate-500 text-center shrink-0">
+                                    Tiết: <span className="text-slate-600">{lesson.tietBatDau}-{lesson.tietKetThuc}</span>
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 text-center break-all shrink-0">
+                                    Mã lớp: <span className="text-slate-600">{lesson.maLop}</span>
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 text-center break-words shrink-0 mt-1">
+                                    GV: <span className="text-slate-600">{lesson.tenGiangVien}</span>
+                                  </p>
+                                </div>
+                                
+                                <div className="flex justify-center gap-3 mt-3 pt-2 border-t border-[#009dd9]/10 shrink-0">
+                                  <button className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer" title="Sửa">
+                                    <Edit className="w-[14px] h-[14px]" />
+                                  </button>
+                                  <button onClick={() => handleDelete(lesson.id, lesson.tenMonHoc)} className="text-red-400 hover:text-red-600 transition-colors cursor-pointer" title="Xóa">
+                                    <Trash2 className="w-[14px] h-[14px]" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
