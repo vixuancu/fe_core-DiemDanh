@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { ScanFace, Eye, EyeOff } from 'lucide-react';
+import { config } from '@/shared/config/env';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -30,7 +31,11 @@ export function LoginPage() {
   };
 
   const quickLogin = async (loginEmail: string) => {
-    await login(loginEmail, '123');
+    const ok = await login(loginEmail, '123');
+    if (!ok) {
+      setError('Đăng nhập nhanh thất bại trong chế độ API');
+      return;
+    }
     navigate('/dashboard', { replace: true });
   };
 
@@ -109,26 +114,27 @@ export function LoginPage() {
             </button>
           </form>
 
-          {/* Quick demo login */}
-          <div className="mt-6 pt-6 border-t border-border">
-            <p className="text-xs text-center text-muted-foreground mb-3">Đăng nhập nhanh (Demo)</p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Quản trị viên', email: 'admin@edu.vn' },
-                { label: 'Giáo vụ', email: 'giaovu@edu.vn' },
-                { label: 'Giảng viên', email: 'trinh.dd@edu.vn' },
-              ].map((item) => (
-                <button
-                  key={item.email}
-                  type="button"
-                  onClick={() => quickLogin(item.email)}
-                  className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-[#009dd9]/5 hover:border-[#009dd9]/30 transition cursor-pointer"
-                >
-                  {item.label}
-                </button>
-              ))}
+          {config.dataSource === 'mock' && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <p className="text-xs text-center text-muted-foreground mb-3">Đăng nhập nhanh (Demo)</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Quản trị viên', email: 'admin@edu.vn' },
+                  { label: 'Giáo vụ', email: 'giaovu@edu.vn' },
+                  { label: 'Giảng viên', email: 'trinh.dd@edu.vn' },
+                ].map((item) => (
+                  <button
+                    key={item.email}
+                    type="button"
+                    onClick={() => quickLogin(item.email)}
+                    className="px-3 py-2 rounded-lg border border-border text-sm hover:bg-[#009dd9]/5 hover:border-[#009dd9]/30 transition cursor-pointer"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

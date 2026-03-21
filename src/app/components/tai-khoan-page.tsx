@@ -4,6 +4,7 @@ import type { UserRole } from '@/shared/types';
 import { useAccounts, useAccountStats, useCreateAccount, useUpdateAccount, useDeleteAccount, useResetPassword } from '@/features/accounts/hooks/useAccounts';
 import { Search, Plus, Edit, Lock, Unlock, Trash2, X, ChevronLeft, ChevronRight, KeyRound, Loader2 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
+import { useAuth } from '@/features/auth/context/AuthContext';
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -20,6 +21,7 @@ const creatableRoles: { value: UserRole; label: string }[] = [
 ];
 
 export function TaiKhoanPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<UserRole | ''>('');
   const [filterTrangThai, setFilterTrangThai] = useState<'active' | 'locked' | ''>('');
@@ -37,7 +39,7 @@ export function TaiKhoanPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
-  const { data: accountsData, isLoading } = useAccounts({
+  const { data: accountsData, isLoading, error } = useAccounts({
     search: search || undefined,
     role: filterRole || undefined,
     trangThai: filterTrangThai || undefined,
@@ -59,6 +61,8 @@ export function TaiKhoanPage() {
     lastPage: accountsData?.totalPages ?? 1,
   };
   const stats = statsData ?? { total: 0, giaoVu: 0, giangVien: 0, active: 0, locked: 0 };
+  const errorMessage = error instanceof Error ? error.message : '';
+  const isForbidden = errorMessage.includes('403') || errorMessage.toLowerCase().includes('quyền');
 
   const formatDate = (value: string) => {
     if (!value) return '-';
@@ -123,6 +127,18 @@ export function TaiKhoanPage() {
           <Plus className="w-4 h-4" /> Tạo tài khoản
         </button>
       </div>
+
+      {user?.role !== 'admin' && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Chức năng này yêu cầu quyền admin. Tài khoản hiện tại của bạn không có quyền truy cập.
+        </div>
+      )}
+
+      {isForbidden && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage || 'Bạn không có quyền truy cập dữ liệu tài khoản.'}
+        </div>
+      )}
 
       {/* Thống kê nhanh */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">

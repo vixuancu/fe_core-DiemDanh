@@ -2,6 +2,7 @@ import { config } from '@/shared/config/env';
 import type { IAccountService } from './account.service';
 import type { Account, AccountFilter, CreateAccountDto, UpdateAccountDto } from '../types';
 import type { PaginatedResult } from '@/shared/types';
+import { forceLogout, getAccessToken } from '@/features/auth/session';
 
 const API_URL = `${config.apiBaseUrl}/accounts`;
 
@@ -31,6 +32,15 @@ interface BackendAccount {
   role_id: number;
   role_name?: string | null;
   is_cancel: boolean;
+}
+
+class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
 function toAscii(text: string): string {
@@ -75,23 +85,31 @@ function mapAccount(item: BackendAccount): Account {
 }
 
 async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
-  const payload = (await res.json()) as ApiEnvelope<T>;
-  if (!res.ok || !payload.success) {
-    throw new Error(payload.message || 'Có lỗi xảy ra từ máy chủ');
+  const payload = (await res.json().catch(() => ({}))) as Partial<ApiEnvelope<T>>;
+  if (res.status === 401) {
+    forceLogout();
+    throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
   }
-  return payload;
+  if (!res.ok || !payload.success) {
+    throw new ApiError(payload.message || 'Có lỗi xảy ra từ máy chủ', res.status);
+  }
+  return payload as ApiEnvelope<T>;
 }
 
 async function parseListEnvelope<T>(res: Response): Promise<ApiListEnvelope<T>> {
-  const payload = (await res.json()) as ApiListEnvelope<T>;
-  if (!res.ok || !payload.success) {
-    throw new Error(payload.message || 'Có lỗi xảy ra từ máy chủ');
+  const payload = (await res.json().catch(() => ({}))) as Partial<ApiListEnvelope<T>>;
+  if (res.status === 401) {
+    forceLogout();
+    throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
   }
-  return payload;
+  if (!res.ok || !payload.success) {
+    throw new ApiError(payload.message || 'Có lỗi xảy ra từ máy chủ', res.status);
+  }
+  return payload as ApiListEnvelope<T>;
 }
 
 function getAuthHeaders(extra?: HeadersInit): HeadersInit {
-  const token = localStorage.getItem('access_token');
+  const token = getAccessToken();
   return {
     ...(extra || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -123,12 +141,25 @@ export const accountApi: IAccountService = {
   },
 
   async getStats() {
-    const params = new URLSearchParams({ page: '1', page_size: '500' });
-    const res = await fetch(`${API_URL}?${params.toString()}`, {
-      headers: getAuthHeaders(),
-    });
-    const payload = await parseListEnvelope<BackendAccount>(res);
-    const all = payload.data.map(mapAccount);
+    const pageSize = 100;
+    let currentPage = 1;
+    let totalPages = 1;
+    const all: Account[] = [];
+
+    while (currentPage <= totalPages) {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        page_size: String(pageSize),
+      });
+      const res = await fetch(`${API_URL}?${params.toString()}`, {
+        headers: getAuthHeaders(),
+      });
+      const payload = await parseListEnvelope<BackendAccount>(res);
+      all.push(...payload.data.map(mapAccount));
+      totalPages = payload.total_pages;
+      currentPage += 1;
+    }
+
     return {
       total: all.length,
       giaoVu: all.filter((t) => t.role === 'giao_vu').length,
