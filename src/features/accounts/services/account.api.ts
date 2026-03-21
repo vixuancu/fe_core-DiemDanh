@@ -5,54 +5,183 @@ import type { PaginatedResult } from '@/shared/types';
 
 const API_URL = `${config.apiBaseUrl}/accounts`;
 
+interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+interface ApiListEnvelope<T> {
+  success: boolean;
+  message: string;
+  data: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+interface BackendAccount {
+  id: number;
+  username: string;
+  full_name?: string | null;
+  email: string;
+  gender?: boolean | null;
+  birth_of_date?: string | null;
+  role_id: number;
+  role_name?: string | null;
+  is_cancel: boolean;
+}
+
+function toAscii(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[^\u0000-\u007E]/g, '')
+    .toLowerCase();
+}
+
+function normalizeRole(roleName?: string | null): Account['role'] {
+  const raw = toAscii((roleName || '').trim());
+  if (raw === 'admin') return 'admin';
+  if (raw === 'giao_vu' || raw === 'giao vu') return 'giao_vu';
+  if (raw === 'giang_vien' || raw === 'giang vien') return 'giang_vien';
+  return 'giao_vu';
+}
+
+function roleToRoleId(role: Account['role']): number {
+  if (role === 'admin') return 4;
+  if (role === 'giao_vu') return 5;
+  return 6;
+}
+
+function toIsoDate(date?: string | null): string {
+  if (!date) return '';
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
+function mapAccount(item: BackendAccount): Account {
+  return {
+    id: String(item.id),
+    username: item.username,
+    hoTen: item.full_name?.trim() || item.username,
+    email: item.email,
+    gioiTinh: item.gender ?? null,
+    ngaySinh: toIsoDate(item.birth_of_date),
+    role: normalizeRole(item.role_name),
+    trangThai: item.is_cancel ? 'locked' : 'active',
+  };
+}
+
+async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
+  const payload = (await res.json()) as ApiEnvelope<T>;
+  if (!res.ok || !payload.success) {
+    throw new Error(payload.message || 'Có lỗi xảy ra từ máy chủ');
+  }
+  return payload;
+}
+
+async function parseListEnvelope<T>(res: Response): Promise<ApiListEnvelope<T>> {
+  const payload = (await res.json()) as ApiListEnvelope<T>;
+  if (!res.ok || !payload.success) {
+    throw new Error(payload.message || 'Có lỗi xảy ra từ máy chủ');
+  }
+  return payload;
+}
+
+function getAuthHeaders(extra?: HeadersInit): HeadersInit {
+  const token = localStorage.getItem('access_token');
+  return {
+    ...(extra || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export const accountApi: IAccountService = {
   async list(filter: AccountFilter): Promise<PaginatedResult<Account>> {
-    const params = new URLSearchParams({
-      ...(filter.search && { search: filter.search }),
-      ...(filter.role && { role: filter.role }),
-      ...(filter.trangThai && { trangThai: filter.trangThai }),
-      page: String(filter.page ?? 1),
-      perPage: String(filter.perPage ?? 10),
-    });
+    const params = new URLSearchParams();
+    if (filter.search) params.set('search', filter.search);
+    if (filter.role) params.set('role_name', filter.role);
+    params.set('page', String(filter.page ?? 1));
+    params.set('page_size', String(filter.perPage ?? 10));
 
-    const res = await fetch(`${API_URL}?${params.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch accounts');
-    return res.json();
+    const res = await fetch(`${API_URL}?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const payload = await parseListEnvelope<BackendAccount>(res);
+    const mapped = payload.data.map(mapAccount);
+    const data = filter.trangThai ? mapped.filter((a) => a.trangThai === filter.trangThai) : mapped;
+
+    return {
+      data,
+      total: payload.total,
+      page: payload.page,
+      perPage: payload.page_size,
+      totalPages: payload.total_pages,
+    };
   },
 
   async getStats() {
-    const res = await fetch(`${API_URL}/stats`);
-    if (!res.ok) throw new Error('Failed to fetch stats');
-    return res.json();
+    const params = new URLSearchParams({ page: '1', page_size: '500' });
+    const res = await fetch(`${API_URL}?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const payload = await parseListEnvelope<BackendAccount>(res);
+    const all = payload.data.map(mapAccount);
+    return {
+      total: all.length,
+      giaoVu: all.filter((t) => t.role === 'giao_vu').length,
+      giangVien: all.filter((t) => t.role === 'giang_vien').length,
+      active: all.filter((t) => t.trangThai === 'active').length,
+      locked: all.filter((t) => t.trangThai === 'locked').length,
+    };
   },
 
   async create(dto: CreateAccountDto): Promise<Account> {
+    const body = {
+      username: dto.username,
+      email: dto.email,
+      password: dto.password,
+      full_name: dto.hoTen || null,
+      gender: dto.gioiTinh ?? null,
+      birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : null,
+      role_id: roleToRoleId(dto.role),
+    };
+
     const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dto),
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error('Failed to create account');
-    return res.json();
+    const payload = await parseEnvelope<BackendAccount>(res);
+    return mapAccount(payload.data);
   },
 
   async update(id: string, dto: UpdateAccountDto): Promise<Account> {
+    const body: Record<string, unknown> = {
+      full_name: dto.hoTen,
+      gender: dto.gioiTinh,
+      birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : dto.ngaySinh === '' ? null : undefined,
+      is_cancel: dto.trangThai === undefined ? undefined : dto.trangThai === 'locked',
+      role_id: dto.role ? roleToRoleId(dto.role) : undefined,
+    };
+
     const res = await fetch(`${API_URL}/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dto),
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error('Failed to update account');
-    return res.json();
+    const payload = await parseEnvelope<BackendAccount>(res);
+    return mapAccount(payload.data);
   },
 
   async delete(id: string): Promise<void> {
-    const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete account');
+    await this.update(id, { trangThai: 'locked' });
   },
 
   async resetPassword(id: string): Promise<void> {
-    const res = await fetch(`${API_URL}/${id}/reset-password`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to reset password');
+    void id;
+    throw new Error('Chức năng reset mật khẩu chưa được backend hỗ trợ');
   }
 };
