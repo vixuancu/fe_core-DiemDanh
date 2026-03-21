@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router';
 import { router } from './router';
 import { AuthProvider } from '@/features/auth/context/AuthContext';
+import { Toaster } from '@/app/components/ui/sonner';
 
 // ─── React Query client ───────────────────────────────────────────────────────
 const queryClient = new QueryClient({
@@ -20,6 +21,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RouterProvider router={router} />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { creditClassService } from '../services';
 import type { CreditClassFilter, CreateLopTinChiDto, UpdateLopTinChiDto } from '../types';
+import { notify } from '@/shared/lib/notify';
 
 export const creditClassKeys = {
   all: ['creditClasses'] as const,
@@ -31,6 +32,11 @@ export function useCreateCreditClass() {
     mutationFn: (dto: CreateLopTinChiDto) => creditClassService.create(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
+      notify.success('Thêm lớp tín chỉ thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Thêm lớp tín chỉ thất bại';
+      notify.error(message);
     },
   });
 }
@@ -42,6 +48,11 @@ export function useUpdateCreditClass() {
       creditClassService.update(id, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
+      notify.success('Cập nhật lớp tín chỉ thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Cập nhật lớp tín chỉ thất bại';
+      notify.error(message);
     },
   });
 }
@@ -52,6 +63,11 @@ export function useDeleteCreditClass() {
     mutationFn: (id: string) => creditClassService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
+      notify.success('Xóa lớp tín chỉ thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Xóa lớp tín chỉ thất bại';
+      notify.error(message);
     },
   });
 }

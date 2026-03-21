@@ -10,6 +10,7 @@ import {
 import type { CreatePhongHocDto } from '@/features/rooms/types';
 import { Search, Plus, Edit, Trash2, Camera, CameraOff, X, Save, AlertCircle, Loader2 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
+import { notify } from '@/shared/lib/notify';
 
 // ─── Shared Components ────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ export function PhongHocPage() {
         updateRoom({ id: room.id, dto: { cameraId: undefined } }); // Bỏ gán camera
       }
     } else {
-      alert('Vui lòng Edit phòng để gán camera vào phòng này.');
+      notify.info('Vui lòng chỉnh sửa phòng để gán camera vào phòng này.');
     }
   };
 

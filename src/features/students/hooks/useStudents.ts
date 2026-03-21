@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { studentService } from '../services';
 import type { StudentFilter, CreateSinhVienDto, UpdateSinhVienDto } from '../types';
+import { notify } from '@/shared/lib/notify';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 // Đặt tập trung để invalidate dễ dàng
@@ -53,6 +54,11 @@ export function useCreateStudent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: studentKeys.lopOptions() });
+      notify.success('Thêm sinh viên thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Thêm sinh viên thất bại';
+      notify.error(message);
     },
   });
 }
@@ -66,6 +72,11 @@ export function useUpdateStudent() {
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: studentKeys.detail(id) });
+      notify.success('Cập nhật sinh viên thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Cập nhật sinh viên thất bại';
+      notify.error(message);
     },
   });
 }
@@ -77,6 +88,11 @@ export function useDeleteStudent() {
     mutationFn: (id: string) => studentService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      notify.success('Xóa sinh viên thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Xóa sinh viên thất bại';
+      notify.error(message);
     },
   });
 }
@@ -89,6 +105,11 @@ export function useImportStudents() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: studentKeys.lopOptions() });
+      notify.success('Import sinh viên thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Import sinh viên thất bại';
+      notify.error(message);
     },
   });
 }

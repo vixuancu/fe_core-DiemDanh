@@ -10,6 +10,7 @@ import { authService } from '../services';
 import type { User } from '../types';
 import type { UserRole } from '@/shared/types';
 import { AUTH_LOGOUT_EVENT } from '../session';
+import { notify } from '@/shared/lib/notify';
 
 // ─── Context type ─────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const onLogout = () => {
       setUser(null);
       queryClient.clear();
+      notify.warning('Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.');
     };
     window.addEventListener(AUTH_LOGOUT_EVENT, onLogout as EventListener);
     return () => {
@@ -65,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authService.logout();
       queryClient.clear();
       setUser(null);
+      notify.error('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       return false;
     }
   }, [queryClient]);

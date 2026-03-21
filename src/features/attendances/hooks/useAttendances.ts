@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceService } from '../services';
 import type { AttendanceFilter, UpdateTrangThaiDto } from '../types';
+import { notify } from '@/shared/lib/notify';
 
 export const attendanceKeys = {
   all: ['attendances'] as const,
@@ -35,6 +36,11 @@ export function useUpdateAttendance() {
       queryClient.invalidateQueries({ queryKey: attendanceKeys.lists() });
       // FIXME: Có thể cần invalidate stats dựa trên lichHocId nếu backend trả về lichHocId trong response
       queryClient.invalidateQueries({ queryKey: ['attendances', 'stats'] }); 
+      notify.success('Cập nhật trạng thái điểm danh thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Cập nhật trạng thái điểm danh thất bại';
+      notify.error(message);
     },
   });
 }
@@ -46,6 +52,11 @@ export function useSyncStudents() {
     onSuccess: (_data, lichHocId) => {
       queryClient.invalidateQueries({ queryKey: attendanceKeys.lists() });
       queryClient.invalidateQueries({ queryKey: attendanceKeys.stats(lichHocId) });
+      notify.success('Đồng bộ danh sách sinh viên thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Đồng bộ sinh viên thất bại';
+      notify.error(message);
     },
   });
 }
