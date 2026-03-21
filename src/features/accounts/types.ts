@@ -3,24 +3,30 @@ import type { UserRole } from '@/shared/types';
 
 export interface Account {
   id: string;
+  username: string;
   hoTen: string;
   email: string;
-  soDienThoai: string;
+  gioiTinh: boolean | null;
+  ngaySinh: string;
   role: UserRole;
-  ngayTao: string;
   trangThai: 'active' | 'locked';
 }
 
 export interface CreateAccountDto {
+  username: string;
   hoTen: string;
   email: string;
+  password: string;
   role: UserRole;
-  soDienThoai?: string;
+  gioiTinh?: boolean | null;
+  ngaySinh?: string;
 }
 
 export interface UpdateAccountDto {
   hoTen?: string;
-  soDienThoai?: string;
+  gioiTinh?: boolean | null;
+  ngaySinh?: string;
+  role?: UserRole;
   trangThai?: 'active' | 'locked';
 }
 

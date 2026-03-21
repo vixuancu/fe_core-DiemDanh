@@ -13,7 +13,7 @@ export function useAccounts(filter: AccountFilter) {
   return useQuery({
     queryKey: accountKeys.list(filter),
     queryFn: () => accountService.list(filter),
-    placeholderData: (prev) => prev,
+    retry: false,
   });
 }
 
@@ -21,6 +21,7 @@ export function useAccountStats() {
   return useQuery({
     queryKey: accountKeys.stats(),
     queryFn: () => accountService.getStats(),
+    retry: false,
   });
 }
 

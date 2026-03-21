@@ -4,6 +4,7 @@ import type { UserRole } from '@/shared/types';
 import { useAccounts, useAccountStats, useCreateAccount, useUpdateAccount, useDeleteAccount, useResetPassword } from '@/features/accounts/hooks/useAccounts';
 import { Search, Plus, Edit, Lock, Unlock, Trash2, X, ChevronLeft, ChevronRight, KeyRound, Loader2 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
+import { useAuth } from '@/features/auth/context/AuthContext';
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -20,21 +21,25 @@ const creatableRoles: { value: UserRole; label: string }[] = [
 ];
 
 export function TaiKhoanPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<UserRole | ''>('');
   const [filterTrangThai, setFilterTrangThai] = useState<'active' | 'locked' | ''>('');
   const [showModal, setShowModal] = useState(false);
   
   // Create state
+  const [username, setUsername] = useState('');
   const [hoTen, setHoTen] = useState('');
   const [email, setEmail] = useState('');
-  const [soDienThoai, setSoDienThoai] = useState('');
+  const [password, setPassword] = useState('');
+  const [gioiTinh, setGioiTinh] = useState<boolean | null>(null);
+  const [ngaySinh, setNgaySinh] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('giang_vien');
   
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
-  const { data: accountsData, isLoading } = useAccounts({
+  const { data: accountsData, isLoading, error } = useAccounts({
     search: search || undefined,
     role: filterRole || undefined,
     trangThai: filterTrangThai || undefined,
@@ -56,12 +61,31 @@ export function TaiKhoanPage() {
     lastPage: accountsData?.totalPages ?? 1,
   };
   const stats = statsData ?? { total: 0, giaoVu: 0, giangVien: 0, active: 0, locked: 0 };
+  const errorMessage = error instanceof Error ? error.message : '';
+  const isForbidden = errorMessage.includes('403') || errorMessage.toLowerCase().includes('quyền');
+
+  const formatDate = (value: string) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  const genderLabel = (value: boolean | null) => {
+    if (value === true) return 'Nam';
+    if (value === false) return 'Nữ';
+    return 'Khác';
+  };
 
   const handleCreate = () => {
-    if (!hoTen || !email) return;
+    if (!username || !email || !password) return;
     createMutation.mutate(
-      { hoTen, email, role: selectedRole, soDienThoai },
-      { onSuccess: () => setShowModal(false) }
+      { username, hoTen, email, password, role: selectedRole, gioiTinh, ngaySinh },
+      {
+        onSuccess: () => {
+          setShowModal(false);
+        },
+      }
     );
   };
 
@@ -91,15 +115,30 @@ export function TaiKhoanPage() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <h2>Quản lý tài khoản</h2>
         <button onClick={() => {
+          setUsername('');
           setHoTen('');
           setEmail('');
-          setSoDienThoai('');
+          setPassword('');
+          setGioiTinh(null);
+          setNgaySinh('');
           setSelectedRole('giang_vien');
           setShowModal(true);
         }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer">
           <Plus className="w-4 h-4" /> Tạo tài khoản
         </button>
       </div>
+
+      {user?.role !== 'admin' && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Chức năng này yêu cầu quyền admin. Tài khoản hiện tại của bạn không có quyền truy cập.
+        </div>
+      )}
+
+      {isForbidden && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage || 'Bạn không có quyền truy cập dữ liệu tài khoản.'}
+        </div>
+      )}
 
       {/* Thống kê nhanh */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
@@ -164,15 +203,16 @@ export function TaiKhoanPage() {
           <div className="py-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[1180px] text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b border-border">
                   <th className="text-left py-3 px-4 font-normal text-muted-foreground">STT</th>
                   <th className="text-left py-3 px-4 font-normal text-muted-foreground">Họ và tên</th>
+                  <th className="text-left py-3 px-4 font-normal text-muted-foreground">Username</th>
                   <th className="text-left py-3 px-4 font-normal text-muted-foreground">Email</th>
-                  <th className="text-left py-3 px-4 font-normal text-muted-foreground">Số điện thoại</th>
+                  <th className="text-left py-3 px-4 font-normal text-muted-foreground">Giới tính</th>
+                  <th className="text-left py-3 px-4 font-normal text-muted-foreground">Ngày sinh</th>
                   <th className="text-left py-3 px-4 font-normal text-muted-foreground">Vai trò</th>
-                  <th className="text-left py-3 px-4 font-normal text-muted-foreground">Ngày tạo</th>
                   <th className="text-left py-3 px-4 font-normal text-muted-foreground">Trạng thái</th>
                   <th className="text-left py-3 px-4 font-normal text-muted-foreground">Thao tác</th>
                 </tr>
@@ -189,14 +229,15 @@ export function TaiKhoanPage() {
                         <span>{tk.hoTen}</span>
                       </div>
                     </td>
+                    <td className="py-3 px-4">{tk.username}</td>
                     <td className="py-3 px-4">{tk.email}</td>
-                    <td className="py-3 px-4">{tk.soDienThoai}</td>
+                    <td className="py-3 px-4">{genderLabel(tk.gioiTinh)}</td>
+                    <td className="py-3 px-4">{formatDate(tk.ngaySinh)}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded text-xs ${roleColors[tk.role]}`}>
                         {roleLabels[tk.role]}
                       </span>
                     </td>
-                    <td className="py-3 px-4">{tk.ngayTao}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded text-xs ${tk.trangThai === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {tk.trangThai === 'active' ? 'Hoạt động' : 'Đã khóa'}
@@ -234,7 +275,7 @@ export function TaiKhoanPage() {
                 ))}
                 {accounts.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-muted-foreground">Không tìm thấy tài khoản nào</td>
+                    <td colSpan={9} className="py-8 text-center text-muted-foreground">Không tìm thấy tài khoản nào</td>
                   </tr>
                 )}
               </tbody>
@@ -306,7 +347,16 @@ export function TaiKhoanPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1 text-sm">Họ và tên <span className="text-red-500">*</span></label>
+                  <label className="block mb-1 text-sm">Username <span className="text-red-500">*</span></label>
+                  <input
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                    placeholder="Nhập username"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm">Họ và tên</label>
                   <input 
                     value={hoTen}
                     onChange={e => setHoTen(e.target.value)}
@@ -314,6 +364,8 @@ export function TaiKhoanPage() {
                     placeholder="Nhập họ tên" 
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1 text-sm">Email <span className="text-red-500">*</span></label>
                   <input 
@@ -324,20 +376,44 @@ export function TaiKhoanPage() {
                     placeholder="Nhập email" 
                   />
                 </div>
+                <div>
+                  <label className="block mb-1 text-sm">Mật khẩu <span className="text-red-500">*</span></label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                    placeholder="Nhập mật khẩu"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block mb-1 text-sm">Số điện thoại</label>
-                <input 
-                  value={soDienThoai}
-                  onChange={e => setSoDienThoai(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30" 
-                  placeholder="Nhập SĐT" 
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm">Mật khẩu mặc định</label>
-                <input type="text" value="123456" readOnly className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm text-muted-foreground" />
-                <p className="text-xs text-muted-foreground mt-1">Người dùng sẽ được yêu cầu đổi mật khẩu khi đăng nhập lần đầu</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-1 text-sm">Giới tính</label>
+                  <PortableSelect
+                    value={gioiTinh === null ? '' : String(gioiTinh)}
+                    onChange={e => {
+                      if (e.target.value === 'true') setGioiTinh(true);
+                      else if (e.target.value === 'false') setGioiTinh(false);
+                      else setGioiTinh(null);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                    labelClassName="text-sm"
+                  >
+                    <option value="">Khác</option>
+                    <option value="true">Nam</option>
+                    <option value="false">Nữ</option>
+                  </PortableSelect>
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm">Ngày sinh</label>
+                  <input
+                    type="date"
+                    value={ngaySinh}
+                    onChange={e => setNgaySinh(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                  />
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
@@ -349,7 +425,7 @@ export function TaiKhoanPage() {
               <button 
                 onClick={handleCreate} 
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] cursor-pointer disabled:opacity-50"
-                disabled={createMutation.isPending || !hoTen || !email}
+                disabled={createMutation.isPending || !username || !email || !password}
               >
                 {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 Tạo tài khoản

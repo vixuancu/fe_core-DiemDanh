@@ -90,12 +90,13 @@ export interface DiemDanh {
 
 export interface TaiKhoan {
   id: string;
+  username: string;
   hoTen: string;
   email: string;
-  soDienThoai: string;
+  gioiTinh: boolean | null;
+  ngaySinh: string;
   role: UserRole;
   trangThai: 'active' | 'locked';
-  ngayTao: string;
 }
 
 // Mock users
@@ -124,14 +125,14 @@ export const mockGiangVien: GiangVien[] = [
 ];
 
 export const mockTaiKhoan: TaiKhoan[] = [
-  { id: '2', hoTen: 'Trần Thị Giáo Vụ', email: 'giaovu@edu.vn', soDienThoai: '0909111222', role: 'giao_vu', trangThai: 'active', ngayTao: '01/09/2025' },
-  { id: '10', hoTen: 'Phạm Văn Hùng', email: 'hung.pv@edu.vn', soDienThoai: '0909111333', role: 'giao_vu', trangThai: 'active', ngayTao: '15/09/2025' },
-  { id: '3', hoTen: 'Đỗ Duy Trình', email: 'trinh.dd@edu.vn', soDienThoai: '0912345678', role: 'giang_vien', trangThai: 'active', ngayTao: '01/09/2025' },
-  { id: '5', hoTen: 'Vũ Xuân Hạnh', email: 'hanh.vx@edu.vn', soDienThoai: '0912345679', role: 'giang_vien', trangThai: 'active', ngayTao: '01/09/2025' },
-  { id: '6', hoTen: 'Nguyễn Thị Lan', email: 'lan.nt@edu.vn', soDienThoai: '0912345680', role: 'giang_vien', trangThai: 'active', ngayTao: '05/09/2025' },
-  { id: '7', hoTen: 'Trần Minh Quang', email: 'quang.tm@edu.vn', soDienThoai: '0912345681', role: 'giang_vien', trangThai: 'locked', ngayTao: '05/09/2025' },
-  { id: '11', hoTen: 'Lê Văn Sơn', email: 'son.lv@edu.vn', soDienThoai: '0912345682', role: 'giang_vien', trangThai: 'active', ngayTao: '10/10/2025' },
-  { id: '12', hoTen: 'Nguyễn Hải Yến', email: 'yen.nh@edu.vn', soDienThoai: '0912345683', role: 'giang_vien', trangThai: 'active', ngayTao: '10/10/2025' },
+  { id: '2', username: 'giaovu01', hoTen: 'Trần Thị Giáo Vụ', email: 'giaovu@edu.vn', gioiTinh: false, ngaySinh: '1988-07-12', role: 'giao_vu', trangThai: 'active' },
+  { id: '10', username: 'hungpv', hoTen: 'Phạm Văn Hùng', email: 'hung.pv@edu.vn', gioiTinh: true, ngaySinh: '1986-09-01', role: 'giao_vu', trangThai: 'active' },
+  { id: '3', username: 'trinhdd', hoTen: 'Đỗ Duy Trình', email: 'trinh.dd@edu.vn', gioiTinh: true, ngaySinh: '1985-03-10', role: 'giang_vien', trangThai: 'active' },
+  { id: '5', username: 'hanhvx', hoTen: 'Vũ Xuân Hạnh', email: 'hanh.vx@edu.vn', gioiTinh: false, ngaySinh: '1987-11-20', role: 'giang_vien', trangThai: 'active' },
+  { id: '6', username: 'lannt', hoTen: 'Nguyễn Thị Lan', email: 'lan.nt@edu.vn', gioiTinh: false, ngaySinh: '1989-05-15', role: 'giang_vien', trangThai: 'active' },
+  { id: '7', username: 'quangtm', hoTen: 'Trần Minh Quang', email: 'quang.tm@edu.vn', gioiTinh: true, ngaySinh: '1984-01-06', role: 'giang_vien', trangThai: 'locked' },
+  { id: '11', username: 'sonlv', hoTen: 'Lê Văn Sơn', email: 'son.lv@edu.vn', gioiTinh: true, ngaySinh: '1990-04-18', role: 'giang_vien', trangThai: 'active' },
+  { id: '12', username: 'yennh', hoTen: 'Nguyễn Hải Yến', email: 'yen.nh@edu.vn', gioiTinh: false, ngaySinh: '1991-02-25', role: 'giang_vien', trangThai: 'active' },
 ];
 
 export const mockPhongHoc: PhongHoc[] = [

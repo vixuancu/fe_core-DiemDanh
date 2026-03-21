@@ -5,9 +5,11 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services';
 import type { User } from '../types';
 import type { UserRole } from '@/shared/types';
+import { AUTH_LOGOUT_EVENT } from '../session';
 
 // ─── Context type ─────────────────────────────────────────────────────────────
 
@@ -31,6 +33,7 @@ const DEMO_USERS: User[] = [
 ];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,26 +44,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    const onLogout = () => {
+      setUser(null);
+      queryClient.clear();
+    };
+    window.addEventListener(AUTH_LOGOUT_EVENT, onLogout as EventListener);
+    return () => {
+      window.removeEventListener(AUTH_LOGOUT_EVENT, onLogout as EventListener);
+    };
+  }, [queryClient]);
+
   const login = useCallback(async (username: string, password: string) => {
     try {
       const u = await authService.login({ username, password });
+      queryClient.clear();
       setUser(u);
       return true;
     } catch {
+      await authService.logout();
+      queryClient.clear();
+      setUser(null);
       return false;
     }
-  }, []);
+  }, [queryClient]);
 
   const logout = useCallback(async () => {
     await authService.logout();
+    queryClient.clear();
     setUser(null);
-  }, []);
+  }, [queryClient]);
 
   /** Chỉ dùng trong demo/mock mode để chuyển role nhanh */
   const switchRole = useCallback((role: UserRole) => {
     const found = DEMO_USERS.find((u) => u.role === role);
-    if (found) setUser(found);
-  }, []);
+    if (found) {
+      queryClient.clear();
+      setUser(found);
+    }
+  }, [queryClient]);
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, logout, switchRole }}>

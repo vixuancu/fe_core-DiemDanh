@@ -47,11 +47,12 @@ export const accountMock: IAccountService = {
     await delay();
     const newAccount: Account = {
       id: Math.random().toString(36).substr(2, 9),
+      username: dto.username,
       hoTen: dto.hoTen,
       email: dto.email,
       role: dto.role,
-      soDienThoai: dto.soDienThoai || '',
-      ngayTao: new Date().toLocaleDateString('vi-VN'),
+      gioiTinh: dto.gioiTinh ?? null,
+      ngaySinh: dto.ngaySinh || '',
       trangThai: 'active',
     };
     STORE = [newAccount, ...STORE];

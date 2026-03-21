@@ -1,6 +1,7 @@
 import { config } from '@/shared/config/env';
 import type { UserRole } from '@/shared/types';
 import type { IAuthService, LoginCredentials, User } from '../types';
+import { clearAccessToken, getAccessToken, setAccessToken } from '../session';
 
 /**
  * API Auth Adapter — Kết nối backend thật
@@ -66,17 +67,17 @@ export const authApi: IAuthService = {
     });
 
     const payload = await parseEnvelope<LoginData>(res);
-    localStorage.setItem('access_token', payload.data.token.access_token);
+    setAccessToken(payload.data.token.access_token);
     return mapUser(payload.data.user);
   },
 
   async logout() {
-    localStorage.removeItem('access_token');
+    clearAccessToken();
     // Có thể gọi API logout nếu backend yêu cầu
   },
 
   async getCurrentUser(): Promise<User | null> {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     if (!token) return null;
 
     const res = await fetch(`${config.apiBaseUrl}/auth/me`, {
@@ -85,7 +86,7 @@ export const authApi: IAuthService = {
 
     if (!res.ok) {
       if (res.status === 401) {
-        localStorage.removeItem('access_token');
+        clearAccessToken();
       }
       return null;
     }
@@ -95,7 +96,7 @@ export const authApi: IAuthService = {
   },
 
   async changePassword(oldPassword: string, newPassword: string) {
-    const token = localStorage.getItem('access_token');
+    const token = getAccessToken();
     const res = await fetch(`${config.apiBaseUrl}/auth/change-password`, {
       method: 'POST',
       headers: {
