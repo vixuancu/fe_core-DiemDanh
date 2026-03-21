@@ -212,7 +212,10 @@ export const accountApi: IAccountService = {
   },
 
   async resetPassword(id: string): Promise<void> {
-    void id;
-    throw new Error('Chức năng reset mật khẩu chưa được backend hỗ trợ');
+    const res = await fetch(`${API_URL}/${id}/reset-password`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    });
+    await parseEnvelope<null>(res);
   }
 };
