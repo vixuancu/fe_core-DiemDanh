@@ -121,6 +121,7 @@ export const accountApi: IAccountService = {
     const params = new URLSearchParams();
     if (filter.search) params.set('search', filter.search);
     if (filter.role) params.set('role_name', filter.role);
+    if (filter.trangThai) params.set('is_cancel', String(filter.trangThai === 'locked'));
     params.set('page', String(filter.page ?? 1));
     params.set('page_size', String(filter.perPage ?? 10));
 
@@ -128,8 +129,7 @@ export const accountApi: IAccountService = {
       headers: getAuthHeaders(),
     });
     const payload = await parseListEnvelope<BackendAccount>(res);
-    const mapped = payload.data.map(mapAccount);
-    const data = filter.trangThai ? mapped.filter((a) => a.trangThai === filter.trangThai) : mapped;
+    const data = payload.data.map(mapAccount);
 
     return {
       data,
@@ -212,7 +212,10 @@ export const accountApi: IAccountService = {
   },
 
   async resetPassword(id: string): Promise<void> {
-    void id;
-    throw new Error('Chức năng reset mật khẩu chưa được backend hỗ trợ');
+    const res = await fetch(`${API_URL}/${id}/reset-password`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    });
+    await parseEnvelope<null>(res);
   }
 };

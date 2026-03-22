@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { roleLabels } from './data';
 import type { UserRole } from '@/shared/types';
 import { useAccounts, useAccountStats, useCreateAccount, useUpdateAccount, useDeleteAccount, useResetPassword } from '@/features/accounts/hooks/useAccounts';
 import { Search, Plus, Edit, Lock, Unlock, Trash2, X, ChevronLeft, ChevronRight, KeyRound, Loader2 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { notify } from '@/shared/lib/notify';
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -22,6 +23,7 @@ const creatableRoles: { value: UserRole; label: string }[] = [
 
 export function TaiKhoanPage() {
   const { user } = useAuth();
+  const lastErrorRef = useRef('');
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<UserRole | ''>('');
   const [filterTrangThai, setFilterTrangThai] = useState<'active' | 'locked' | ''>('');
@@ -64,6 +66,12 @@ export function TaiKhoanPage() {
   const errorMessage = error instanceof Error ? error.message : '';
   const isForbidden = errorMessage.includes('403') || errorMessage.toLowerCase().includes('quyền');
 
+  useEffect(() => {
+    if (!errorMessage || errorMessage === lastErrorRef.current) return;
+    lastErrorRef.current = errorMessage;
+    notify.error(errorMessage);
+  }, [errorMessage]);
+
   const formatDate = (value: string) => {
     if (!value) return '-';
     const date = new Date(value);
@@ -104,9 +112,7 @@ export function TaiKhoanPage() {
 
   const handleResetPassword = (id: string) => {
     if (confirm('Khôi phục mật khẩu mặc định (123456) cho tài khoản này?')) {
-      resetMutation.mutate(id, {
-        onSuccess: () => alert('Đã khôi phục mật khẩu thành công!'),
-      });
+      resetMutation.mutate(id);
     }
   };
 
@@ -137,6 +143,12 @@ export function TaiKhoanPage() {
       {isForbidden && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {errorMessage || 'Bạn không có quyền truy cập dữ liệu tài khoản.'}
+        </div>
+      )}
+
+      {errorMessage && !isForbidden && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
         </div>
       )}
 

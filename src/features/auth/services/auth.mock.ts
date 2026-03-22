@@ -1,4 +1,5 @@
 import type { IAuthService, LoginCredentials, User } from '../types';
+import { clearAccessToken } from '../session';
 
 // Mock users — giữ nguyên data từ data.ts cũ
 const MOCK_USERS: User[] = [
@@ -29,6 +30,7 @@ export const authMock: IAuthService = {
     await delay(100);
     _currentUser = null;
     sessionStorage.removeItem('mock_user');
+    clearAccessToken();
   },
 
   async getCurrentUser() {

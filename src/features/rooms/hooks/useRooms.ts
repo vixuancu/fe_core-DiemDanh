@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roomService } from '../services';
 import type { RoomFilter, CreatePhongHocDto, UpdatePhongHocDto } from '../types';
+import { notify } from '@/shared/lib/notify';
 
 export const roomKeys = {
   all: ['rooms'] as const,
@@ -41,6 +42,11 @@ export function useCreateRoom() {
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
       queryClient.invalidateQueries({ queryKey: roomKeys.toaNhaOptions() });
       queryClient.invalidateQueries({ queryKey: roomKeys.availableCameras() });
+      notify.success('Thêm phòng học thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Thêm phòng học thất bại';
+      notify.error(message);
     },
   });
 }
@@ -54,6 +60,11 @@ export function useUpdateRoom() {
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
       queryClient.invalidateQueries({ queryKey: roomKeys.toaNhaOptions() });
       queryClient.invalidateQueries({ queryKey: roomKeys.availableCameras() });
+      notify.success('Cập nhật phòng học thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Cập nhật phòng học thất bại';
+      notify.error(message);
     },
   });
 }
@@ -66,6 +77,11 @@ export function useDeleteRoom() {
       queryClient.invalidateQueries({ queryKey: roomKeys.lists() });
       queryClient.invalidateQueries({ queryKey: roomKeys.toaNhaOptions() });
       queryClient.invalidateQueries({ queryKey: roomKeys.availableCameras() });
+      notify.success('Xóa phòng học thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Xóa phòng học thất bại';
+      notify.error(message);
     },
   });
 }

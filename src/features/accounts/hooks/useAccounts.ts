@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountService } from '../services';
 import type { AccountFilter, CreateAccountDto, UpdateAccountDto } from '../types';
+import { notify } from '@/shared/lib/notify';
 
 export const accountKeys = {
   all: ['accounts'] as const,
@@ -32,6 +33,11 @@ export function useCreateAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
       queryClient.invalidateQueries({ queryKey: accountKeys.stats() });
+      notify.success('Tạo tài khoản thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Tạo tài khoản thất bại';
+      notify.error(message);
     },
   });
 }
@@ -44,6 +50,11 @@ export function useUpdateAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
       queryClient.invalidateQueries({ queryKey: accountKeys.stats() });
+      notify.success('Cập nhật tài khoản thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Cập nhật tài khoản thất bại';
+      notify.error(message);
     },
   });
 }
@@ -55,6 +66,11 @@ export function useDeleteAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
       queryClient.invalidateQueries({ queryKey: accountKeys.stats() });
+      notify.success('Đã khóa tài khoản thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Thao tác khóa tài khoản thất bại';
+      notify.error(message);
     },
   });
 }
@@ -62,5 +78,12 @@ export function useDeleteAccount() {
 export function useResetPassword() {
   return useMutation({
     mutationFn: (id: string) => accountService.resetPassword(id),
+    onSuccess: () => {
+      notify.success('Đặt lại mật khẩu thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Đặt lại mật khẩu thất bại';
+      notify.error(message);
+    },
   });
 }
