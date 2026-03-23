@@ -8,6 +8,7 @@ export const accountKeys = {
   lists: () => [...accountKeys.all, 'list'] as const,
   list: (filter: AccountFilter) => [...accountKeys.lists(), filter] as const,
   stats: () => [...accountKeys.all, 'stats'] as const,
+  roles: () => [...accountKeys.all, 'roles'] as const,
 };
 
 export function useAccounts(filter: AccountFilter) {
@@ -22,6 +23,14 @@ export function useAccountStats() {
   return useQuery({
     queryKey: accountKeys.stats(),
     queryFn: () => accountService.getStats(),
+    retry: false,
+  });
+}
+
+export function useAccountRoles() {
+  return useQuery({
+    queryKey: accountKeys.roles(),
+    queryFn: () => accountService.getRoles(),
     retry: false,
   });
 }
