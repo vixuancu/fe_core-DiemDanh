@@ -1,5 +1,5 @@
 import { config } from '@/shared/config/env';
-import type { IAccountService } from './account.service';
+import type { AccountRoleOption, IAccountService } from './account.service';
 import type { Account, AccountFilter, CreateAccountDto, UpdateAccountDto } from '../types';
 import type { PaginatedResult } from '@/shared/types';
 import { forceLogout, getAccessToken } from '@/features/auth/session';
@@ -34,6 +34,11 @@ interface BackendAccount {
   is_cancel: boolean;
 }
 
+interface BackendRole {
+  id: number;
+  role_name: string;
+}
+
 class ApiError extends Error {
   status: number;
 
@@ -58,10 +63,20 @@ function normalizeRole(roleName?: string | null): Account['role'] {
   return 'giao_vu';
 }
 
-function roleToRoleId(role: Account['role']): number {
-  if (role === 'admin') return 1;
-  if (role === 'giao_vu') return 2;
-  return 3;
+function roleLabel(role: Account['role']): string {
+  if (role === 'admin') return 'Quản trị viên';
+  if (role === 'giao_vu') return 'Giáo vụ';
+  return 'Giảng viên';
+}
+
+let roleIdByRole: Partial<Record<Account['role'], number>> = {};
+
+function resolveRoleId(role: Account['role']): number {
+  const resolved = roleIdByRole[role];
+  if (!resolved) {
+    throw new ApiError('Không thể xác định role_id. Vui lòng tải lại trang.', 500);
+  }
+  return resolved;
 }
 
 function toIsoDate(date?: string | null): string {
@@ -169,7 +184,35 @@ export const accountApi: IAccountService = {
     };
   },
 
+  async getRoles(): Promise<AccountRoleOption[]> {
+    const res = await fetch(`${API_URL}/roles`, {
+      headers: getAuthHeaders(),
+    });
+    const payload = await parseListEnvelope<BackendRole>(res);
+    const mapped = payload.data
+      .map((item) => {
+        const role = normalizeRole(item.role_name);
+        return {
+          id: item.id,
+          role,
+          label: roleLabel(role),
+        };
+      })
+      .filter((item, index, arr) => arr.findIndex((r) => r.role === item.role) === index);
+
+    roleIdByRole = mapped.reduce<Partial<Record<Account['role'], number>>>((acc, item) => {
+      acc[item.role] = item.id;
+      return acc;
+    }, {});
+
+    return mapped;
+  },
+
   async create(dto: CreateAccountDto): Promise<Account> {
+    if (!roleIdByRole[dto.role]) {
+      await this.getRoles();
+    }
+
     const body = {
       username: dto.username,
       email: dto.email,
@@ -177,7 +220,7 @@ export const accountApi: IAccountService = {
       full_name: dto.hoTen || null,
       gender: dto.gioiTinh ?? null,
       birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : null,
-      role_id: roleToRoleId(dto.role),
+      role_id: resolveRoleId(dto.role),
     };
 
     const res = await fetch(API_URL, {
@@ -190,12 +233,16 @@ export const accountApi: IAccountService = {
   },
 
   async update(id: string, dto: UpdateAccountDto): Promise<Account> {
+    if (dto.role && !roleIdByRole[dto.role]) {
+      await this.getRoles();
+    }
+
     const body: Record<string, unknown> = {
       full_name: dto.hoTen,
       gender: dto.gioiTinh,
       birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : dto.ngaySinh === '' ? null : undefined,
       is_cancel: dto.trangThai === undefined ? undefined : dto.trangThai === 'locked',
-      role_id: dto.role ? roleToRoleId(dto.role) : undefined,
+      role_id: dto.role ? resolveRoleId(dto.role) : undefined,
     };
 
     const res = await fetch(`${API_URL}/${id}`, {

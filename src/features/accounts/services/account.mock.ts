@@ -43,6 +43,15 @@ export const accountMock: IAccountService = {
     };
   },
 
+  async getRoles() {
+    await delay();
+    return [
+      { id: 1, role: 'admin' as const, label: 'Quản trị viên' },
+      { id: 2, role: 'giao_vu' as const, label: 'Giáo vụ' },
+      { id: 3, role: 'giang_vien' as const, label: 'Giảng viên' },
+    ];
+  },
+
   async create(dto: CreateAccountDto): Promise<Account> {
     await delay();
     const newAccount: Account = {
