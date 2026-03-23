@@ -15,6 +15,12 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface ForgotPasswordConfirmPayload {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
 // ─── Service interface ───────────────────────────────────────────────────────
 
 export interface IAuthService {
@@ -23,4 +29,6 @@ export interface IAuthService {
   /** Lấy user đang đăng nhập (từ token/session) */
   getCurrentUser(): Promise<User | null>;
   changePassword(oldPassword: string, newPassword: string): Promise<void>;
+  requestPasswordReset(email: string): Promise<void>;
+  confirmPasswordReset(payload: ForgotPasswordConfirmPayload): Promise<void>;
 }

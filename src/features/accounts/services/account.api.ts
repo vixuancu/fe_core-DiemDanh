@@ -59,9 +59,9 @@ function normalizeRole(roleName?: string | null): Account['role'] {
 }
 
 function roleToRoleId(role: Account['role']): number {
-  if (role === 'admin') return 4;
-  if (role === 'giao_vu') return 5;
-  return 6;
+  if (role === 'admin') return 1;
+  if (role === 'giao_vu') return 2;
+  return 3;
 }
 
 function toIsoDate(date?: string | null): string {
