@@ -39,6 +39,20 @@ export interface StudentFaceItem {
   createdAt?: string;
 }
 
+export interface StudentImportErrorItem {
+  row: number;
+  field: string;
+  studentCode?: string;
+  message: string;
+}
+
+export interface StudentImportResult {
+  totalRows: number;
+  importedCount: number;
+  failedCount: number;
+  errors: StudentImportErrorItem[];
+}
+
 // ─── Filter ───────────────────────────────────────────────────────────────────
 
 export interface StudentFilter {

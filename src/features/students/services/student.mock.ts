@@ -6,6 +6,7 @@ import type {
   SinhVien,
   StudentFaceItem,
   StudentFilter,
+  StudentImportResult,
   UpdateSinhVienDto,
 } from '../types';
 
@@ -199,9 +200,26 @@ export const studentMock: IStudentService = {
     return [...CLASS_OPTIONS];
   },
 
-  async importFromExcel(_rows: CreateSinhVienDto[]) {
+  async importFromExcel(file: File): Promise<StudentImportResult> {
     await delay(400);
-    return { imported: 0, errors: ['Chức năng import chưa hỗ trợ trong mock mới'] };
+
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.xlsx')) {
+      throw new Error('Mock chỉ hỗ trợ file .xlsx');
+    }
+
+    return {
+      totalRows: 0,
+      importedCount: 0,
+      failedCount: 0,
+      errors: [],
+    };
+  },
+
+  async downloadImportTemplate(): Promise<Blob> {
+    await delay(100);
+    const content = 'Mã sinh viên,Họ và tên,Ngày sinh,Giới tính,Lớp hành chính\n';
+    return new Blob([content], { type: 'text/csv;charset=utf-8;' });
   },
 
   async listFaces(studentId: string): Promise<StudentFaceItem[]> {

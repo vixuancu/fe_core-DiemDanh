@@ -8,6 +8,7 @@ import type {
   SinhVien,
   StudentFaceItem,
   StudentFilter,
+  StudentImportResult,
   UpdateSinhVienDto,
 } from '../types';
 
@@ -51,6 +52,20 @@ interface BackendAdministrativeClass {
   name: string;
 }
 
+interface BackendImportError {
+  row: number;
+  field: string;
+  student_code?: string | null;
+  message: string;
+}
+
+interface BackendImportResult {
+  total_rows: number;
+  imported_count: number;
+  failed_count: number;
+  errors: BackendImportError[];
+}
+
 const API_URL = `${config.apiBaseUrl}/students`;
 
 class ApiError extends Error {
@@ -88,6 +103,20 @@ function mapFace(item: BackendFace): StudentFaceItem {
     id: String(item.id),
     imageUrl: item.image_url,
     createdAt: item.created_at || undefined,
+  };
+}
+
+function mapImportResult(item: BackendImportResult): StudentImportResult {
+  return {
+    totalRows: item.total_rows,
+    importedCount: item.imported_count,
+    failedCount: item.failed_count,
+    errors: item.errors.map((error) => ({
+      row: error.row,
+      field: error.field,
+      studentCode: error.student_code || undefined,
+      message: error.message,
+    })),
   };
 }
 
@@ -204,8 +233,32 @@ export const studentApi: IStudentService = {
     return payload.data.map((item) => ({ id: String(item.id), name: item.name }));
   },
 
-  async importFromExcel(_rows: CreateSinhVienDto[]) {
-    throw new Error('Chức năng import sinh viên chưa được backend hỗ trợ');
+  async importFromExcel(file: File): Promise<StudentImportResult> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    const res = await fetch(`${API_URL}/import`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    const payload = await parseEnvelope<BackendImportResult>(res);
+    return mapImportResult(payload.data);
+  },
+
+  async downloadImportTemplate(): Promise<Blob> {
+    const res = await fetch(`${API_URL}/import/template`, {
+      headers: getAuthHeaders(),
+    });
+    if (res.status === 401) {
+      forceLogout();
+      throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+    }
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { message?: string };
+      throw new ApiError(payload.message || 'Tải file mẫu thất bại', res.status);
+    }
+    return await res.blob();
   },
 
   async listFaces(studentId: string): Promise<StudentFaceItem[]> {

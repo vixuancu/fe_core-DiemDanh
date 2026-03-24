@@ -5,6 +5,7 @@ import type {
   StudentFilter,
   LopHanhChinhOption,
   StudentFaceItem,
+  StudentImportResult,
   PaginatedResult,
 } from '../types';
 
@@ -39,6 +40,8 @@ export interface IStudentService {
 
   deleteFace(studentId: string, faceId: string): Promise<void>;
 
-  /** Import danh sách từ Excel (data đã được parse ở UI) */
-  importFromExcel(rows: CreateSinhVienDto[]): Promise<{ imported: number; errors: string[] }>;
+  /** Import danh sách từ file Excel */
+  importFromExcel(file: File): Promise<StudentImportResult>;
+
+  downloadImportTemplate(): Promise<Blob>;
 }

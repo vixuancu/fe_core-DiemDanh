@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { studentService } from '../services';
-import type { StudentFilter, CreateSinhVienDto, UpdateSinhVienDto } from '../types';
+import type {
+  StudentFilter,
+  CreateSinhVienDto,
+  StudentImportResult,
+  UpdateSinhVienDto,
+} from '../types';
 import { notify } from '@/shared/lib/notify';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
@@ -146,15 +151,31 @@ export function useDeleteStudentFace() {
 export function useImportStudents() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (rows: CreateSinhVienDto[]) => studentService.importFromExcel(rows),
-    onSuccess: () => {
+    mutationFn: (file: File) => studentService.importFromExcel(file),
+    onSuccess: (result: StudentImportResult) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
       queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
-      notify.success('Import sinh viên thành công');
+      if (result.failedCount > 0) {
+        notify.warning(`Đã import ${result.importedCount}/${result.totalRows} dòng`);
+      } else {
+        notify.success(`Import thành công ${result.importedCount} dòng`);
+      }
     },
     onError: (error) => {
       const message = error instanceof Error ? error.message : 'Import sinh viên thất bại';
       notify.error(message);
     },
   });
+}
+
+export async function downloadStudentImportTemplate() {
+  const blob = await studentService.downloadImportTemplate();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'student_import_template.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

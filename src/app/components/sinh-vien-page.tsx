@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  downloadStudentImportTemplate,
   useAddStudentFace,
   useCreateStudent,
   useDeleteStudentFace,
   useDeleteStudent,
+  useImportStudents,
   useLopOptions,
   useStudentFaces,
   useStudents,
@@ -13,13 +15,16 @@ import type {
   CreateSinhVienDto,
   SinhVien,
   StudentFaceItem,
+  StudentImportResult,
   UpdateSinhVienDto,
 } from '@/features/students/types';
 import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Download,
   Edit,
+  FileSpreadsheet,
   ImagePlus,
   Loader2,
   Lock,
@@ -27,12 +32,14 @@ import {
   Search,
   Trash2,
   Unlock,
+  Upload,
   X,
 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
 
 const perPageOptions = [10, 20, 30, 40];
 const MAX_FACE_FILES = 20;
+const MAX_IMPORT_FILE_SIZE = 10 * 1024 * 1024;
 
 type StudentFormState = CreateSinhVienDto & {
   trangThai: 'active' | 'locked';
@@ -42,6 +49,18 @@ type PendingFaceUpload = {
   id: string;
   name: string;
   imageData: string;
+};
+
+type ImportModalProps = {
+  isOpen: boolean;
+  selectedFile: File | null;
+  isPending: boolean;
+  result: StudentImportResult | null;
+  error?: string;
+  onClose: () => void;
+  onSelectFile: (file: File) => void;
+  onImport: () => void;
+  onDownloadTemplate: () => void;
 };
 
 const EMPTY_FORM: StudentFormState = {
@@ -98,6 +117,142 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('Không thể đọc dữ liệu ảnh'));
     reader.readAsDataURL(file);
   });
+}
+
+function ImportExcelModal({
+  isOpen,
+  selectedFile,
+  isPending,
+  result,
+  error,
+  onClose,
+  onSelectFile,
+  onImport,
+  onDownloadTemplate,
+}: ImportModalProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  if (!isOpen) return null;
+
+  const trySelectFile = (file: File | null) => {
+    if (!file) return;
+    onSelectFile(file);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl w-full max-w-2xl p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3>Nhập danh sách sinh viên từ Excel</h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onDownloadTemplate}
+          className="inline-flex items-center gap-2 text-[#009dd9] hover:underline text-sm mb-4 cursor-pointer"
+        >
+          <Download className="w-4 h-4" />
+          Tải file mẫu (.xlsx)
+        </button>
+
+        {error && <ErrorState message={error} />}
+
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => !isPending && fileInputRef.current?.click()}
+          onKeyDown={(event) => {
+            if ((event.key === 'Enter' || event.key === ' ') && !isPending) {
+              event.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            if (!isPending) setIsDragging(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            setIsDragging(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setIsDragging(false);
+            if (isPending) return;
+            trySelectFile(event.dataTransfer.files?.[0] || null);
+          }}
+          className={`border-2 border-dashed rounded-xl p-10 text-center transition ${
+            isDragging ? 'border-[#009dd9] bg-[#009dd9]/5' : 'border-border/80 bg-muted/20'
+          } ${isPending ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/40'}`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            hidden
+            disabled={isPending}
+            onChange={(event) => {
+              trySelectFile(event.target.files?.[0] || null);
+              event.currentTarget.value = '';
+            }}
+          />
+          <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+          <p className="text-base text-muted-foreground">Kéo thả file Excel hoặc nhấn để chọn file</p>
+          <p className="text-sm text-muted-foreground mt-1">Hỗ trợ: .xlsx, .xls</p>
+          {selectedFile && (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-2 bg-blue-50 rounded text-sm text-[#0b6b8d]">
+              <FileSpreadsheet className="w-4 h-4" />
+              {selectedFile.name}
+            </div>
+          )}
+        </div>
+
+        {result && (
+          <div className="mt-4 border border-border rounded-lg p-3 space-y-2">
+            <p className="text-sm">Kết quả: nhập {result.importedCount}/{result.totalRows} dòng</p>
+            {result.failedCount > 0 && (
+              <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
+                {result.errors.slice(0, 20).map((item, idx) => (
+                  <p key={`${item.row}-${item.field}-${idx}`} className="text-xs text-red-600">
+                    Dòng {item.row}: {item.message}
+                    {item.studentCode ? ` (${item.studentCode})` : ''}
+                  </p>
+                ))}
+                {result.errors.length > 20 && (
+                  <p className="text-xs text-muted-foreground">...và {result.errors.length - 20} lỗi khác</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            onClick={onClose}
+            disabled={isPending}
+            className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted cursor-pointer"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={onImport}
+            disabled={isPending || !selectedFile}
+            className="px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] cursor-pointer disabled:opacity-60 flex items-center gap-2"
+          >
+            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            Xác nhận nhập
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 type StudentModalProps = {
@@ -374,6 +529,10 @@ export function SinhVienPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<StudentImportResult | null>(null);
+  const [importError, setImportError] = useState('');
   const [createForm, setCreateForm] = useState<StudentFormState>(EMPTY_FORM);
   const [editForm, setEditForm] = useState<StudentFormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -391,6 +550,7 @@ export function SinhVienPage() {
   const createMutation = useCreateStudent();
   const updateMutation = useUpdateStudent();
   const deleteMutation = useDeleteStudent();
+  const importMutation = useImportStudents();
   const addFaceMutation = useAddStudentFace();
   const deleteFaceMutation = useDeleteStudentFace();
   const {
@@ -608,20 +768,73 @@ export function SinhVienPage() {
     });
   };
 
+  const handleSelectImportFile = (file: File) => {
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls')) {
+      setImportError('Chỉ chấp nhận file Excel .xlsx hoặc .xls');
+      setImportFile(null);
+      return;
+    }
+    if (file.size > MAX_IMPORT_FILE_SIZE) {
+      setImportError('File import không được vượt quá 10MB');
+      setImportFile(null);
+      return;
+    }
+    setImportError('');
+    setImportResult(null);
+    setImportFile(file);
+  };
+
+  const handleImportExcel = () => {
+    if (!importFile) {
+      setImportError('Vui lòng chọn file Excel');
+      return;
+    }
+    importMutation.mutate(importFile, {
+      onSuccess: (result) => {
+        setImportResult(result);
+      },
+      onError: (err) => {
+        setImportError(err instanceof Error ? err.message : 'Import thất bại');
+      },
+    });
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadStudentImportTemplate();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Không thể tải file mẫu');
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <h2>Quản lý sinh viên</h2>
-        <button
-          onClick={() => {
-            setFormError('');
-            setCreateForm(EMPTY_FORM);
-            setShowCreateModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Thêm sinh viên
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setImportError('');
+              setImportResult(null);
+              setImportFile(null);
+              setShowImportModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-white text-sm hover:bg-muted transition cursor-pointer"
+          >
+            <Upload className="w-4 h-4" /> Nhập Excel
+          </button>
+          <button
+            onClick={() => {
+              setFormError('');
+              setCreateForm(EMPTY_FORM);
+              setShowCreateModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Thêm sinh viên
+          </button>
+        </div>
       </div>
 
       {isError && <ErrorState message={(error as Error)?.message ?? 'Đã xảy ra lỗi khi tải dữ liệu'} />}
@@ -821,6 +1034,23 @@ export function SinhVienPage() {
           error={formError}
         />
       )}
+
+      <ImportExcelModal
+        isOpen={showImportModal}
+        selectedFile={importFile}
+        isPending={importMutation.isPending}
+        result={importResult}
+        error={importError}
+        onClose={() => {
+          setShowImportModal(false);
+          setImportFile(null);
+          setImportResult(null);
+          setImportError('');
+        }}
+        onSelectFile={handleSelectImportFile}
+        onImport={handleImportExcel}
+        onDownloadTemplate={handleDownloadTemplate}
+      />
 
       {showEditModal && (
         <StudentModal
