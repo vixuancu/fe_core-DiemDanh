@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import { PortableDateInput, PortableSelect } from './ui/portable-form-controls';
 import type { DiemDanh } from '@/features/attendances/types';
 import { TrangThaiDiemDanh } from '@/shared/types';
+import { formatDateVi, parseDateStringToLocalDate } from '@/shared/lib/date-time';
 
 const statusCode: Record<string, string> = {
   co_mat: 'C',
@@ -30,10 +31,8 @@ const statusOrder = ['co_mat', 'tre', 'vang'] as const;
 
 // Helper: parse dd/mm/yyyy to Date
 const parseDDMMYYYY = (dateStr: string): Date | null => {
-  // If format is YYYY-MM-DD
   if (dateStr.includes('-')) {
-     const d = new Date(dateStr);
-     return isNaN(d.getTime()) ? null : d;
+    return parseDateStringToLocalDate(dateStr);
   }
   // format dd/mm/yyyy
   const parts = dateStr.split('/');
@@ -43,8 +42,7 @@ const parseDDMMYYYY = (dateStr: string): Date | null => {
 
 const parseInputDate = (dateStr: string): Date | null => {
   if (!dateStr) return null;
-  const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? null : d;
+  return parseDateStringToLocalDate(dateStr);
 };
 
 interface CellData {
@@ -415,7 +413,7 @@ export function KetQuaDiemDanhPage() {
                   <thead>
                     <tr className="bg-muted/50">
                       {dates.map(d => {
-                        const showDate = d.includes('-') ? new Date(d).toLocaleDateString('vi-VN') : d;
+                        const showDate = d.includes('-') ? formatDateVi(d) : d;
                         return (
                           <th key={d} className="border-b border-l border-border py-3 px-3 text-center font-normal text-muted-foreground min-w-[80px] whitespace-nowrap">
                             {showDate}

@@ -14,6 +14,7 @@ import { Search, Plus, Edit, Lock, Unlock, Trash2, X, ChevronLeft, ChevronRight,
 import { PortableSelect } from './ui/portable-form-controls';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { notify } from '@/shared/lib/notify';
+import { formatDateVi } from '@/shared/lib/date-time';
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -90,10 +91,7 @@ export function TaiKhoanPage() {
   }, [errorMessage]);
 
   const formatDate = (value: string) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('vi-VN');
+    return formatDateVi(value);
   };
 
   const genderLabel = (value: boolean | null) => {

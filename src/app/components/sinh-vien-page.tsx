@@ -36,6 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
+import { formatDateVi } from '@/shared/lib/date-time';
 
 const perPageOptions = [10, 20, 30, 40];
 const MAX_FACE_FILES = 20;
@@ -73,10 +74,7 @@ const EMPTY_FORM: StudentFormState = {
 };
 
 function formatDate(value: string): string {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString('vi-VN');
+  return formatDateVi(value);
 }
 
 function genderLabel(value: boolean | null): string {

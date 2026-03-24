@@ -1,5 +1,6 @@
 import { config } from '@/shared/config/env';
 import { forceLogout, getAccessToken } from '@/features/auth/session';
+import { toDateInputValue } from '@/shared/lib/date-time';
 import type { IStudentService } from './student.service';
 import type {
   CreateSinhVienDto,
@@ -77,19 +78,12 @@ class ApiError extends Error {
   }
 }
 
-function toDateInput(value?: string | null): string {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toISOString().slice(0, 10);
-}
-
 function mapStudent(item: BackendStudent): SinhVien {
   return {
     id: String(item.id),
     maSV: item.student_code,
     hoTen: item.full_name,
-    ngaySinh: toDateInput(item.birth_of_date),
+    ngaySinh: toDateInputValue(item.birth_of_date),
     gioiTinh: item.gender ?? null,
     lopHanhChinhId: item.administrative_class_id ? String(item.administrative_class_id) : '',
     lopHanhChinh: item.administrative_class_name || 'Chưa phân lớp',
