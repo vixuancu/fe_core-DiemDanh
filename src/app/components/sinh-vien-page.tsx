@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
 import { formatDateVi } from '@/shared/lib/date-time';
+import { notify } from '@/shared/lib/notify';
 
 const perPageOptions = [10, 20, 30, 40];
 const MAX_FACE_FILES = 20;
@@ -56,12 +57,19 @@ type ImportModalProps = {
   isOpen: boolean;
   selectedFile: File | null;
   isPending: boolean;
-  result: StudentImportResult | null;
   error?: string;
   onClose: () => void;
   onSelectFile: (file: File) => void;
   onImport: () => void;
   onDownloadTemplate: () => void;
+};
+
+type ImportErrorModalProps = {
+  isOpen: boolean;
+  result: StudentImportResult | null;
+  isDownloading: boolean;
+  onDownloadErrorFile: () => void;
+  onClose: () => void;
 };
 
 const EMPTY_FORM: StudentFormState = {
@@ -121,7 +129,6 @@ function ImportExcelModal({
   isOpen,
   selectedFile,
   isPending,
-  result,
   error,
   onClose,
   onSelectFile,
@@ -212,25 +219,6 @@ function ImportExcelModal({
           )}
         </div>
 
-        {result && (
-          <div className="mt-4 border border-border rounded-lg p-3 space-y-2">
-            <p className="text-sm">Kết quả: nhập {result.importedCount}/{result.totalRows} dòng</p>
-            {result.failedCount > 0 && (
-              <div className="max-h-32 overflow-y-auto space-y-1 pr-1">
-                {result.errors.slice(0, 20).map((item, idx) => (
-                  <p key={`${item.row}-${item.field}-${idx}`} className="text-xs text-red-600">
-                    Dòng {item.row}: {item.message}
-                    {item.studentCode ? ` (${item.studentCode})` : ''}
-                  </p>
-                ))}
-                {result.errors.length > 20 && (
-                  <p className="text-xs text-muted-foreground">...và {result.errors.length - 20} lỗi khác</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
         <div className="flex justify-end gap-2 mt-6">
           <button
             onClick={onClose}
@@ -246,6 +234,52 @@ function ImportExcelModal({
           >
             {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             Xác nhận nhập
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImportErrorModal({
+  isOpen,
+  result,
+  isDownloading,
+  onDownloadErrorFile,
+  onClose,
+}: ImportErrorModalProps) {
+  if (!isOpen || !result) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl w-full max-w-2xl p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3>Lỗi import sinh viên</h3>
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted cursor-pointer" title="Đóng">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="border border-border rounded-lg p-3 space-y-2">
+          <p className="text-sm">Kết quả: nhập {result.importedCount}/{result.totalRows} dòng</p>
+          <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+            {result.errors.map((item, idx) => (
+              <p key={`${item.row}-${item.field}-${idx}`} className="text-xs text-red-600">
+                Dòng {item.row}: {item.message}
+                {item.studentCode ? ` (${item.studentCode})` : ''}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            onClick={onDownloadErrorFile}
+            disabled={isDownloading}
+            className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted cursor-pointer disabled:opacity-60 flex items-center gap-2"
+          >
+            {isDownloading && <Loader2 className="w-4 h-4 animate-spin" />}
+            Tải file lỗi
           </button>
         </div>
       </div>
@@ -528,6 +562,8 @@ export function SinhVienPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportErrorModal, setShowImportErrorModal] = useState(false);
+  const [isDownloadingErrorFile, setIsDownloadingErrorFile] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<StudentImportResult | null>(null);
   const [importError, setImportError] = useState('');
@@ -790,7 +826,17 @@ export function SinhVienPage() {
     }
     importMutation.mutate(importFile, {
       onSuccess: (result) => {
+        if (result.failedCount === 0) {
+          setShowImportModal(false);
+          setImportFile(null);
+          setImportResult(null);
+          setImportError('');
+          return;
+        }
+
+        setShowImportModal(false);
         setImportResult(result);
+        setShowImportErrorModal(true);
       },
       onError: (err) => {
         setImportError(err instanceof Error ? err.message : 'Import thất bại');
@@ -806,6 +852,74 @@ export function SinhVienPage() {
     }
   };
 
+  const handleDownloadErrorFile = async () => {
+    if (!importFile || !importResult || importResult.errors.length === 0) {
+      notify.error('Không có dữ liệu lỗi để tải');
+      return;
+    }
+
+    setIsDownloadingErrorFile(true);
+    try {
+      const XLSX = await import('xlsx');
+      const buffer = await importFile.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
+
+      if (!firstSheet) {
+        throw new Error('Không tìm thấy sheet dữ liệu trong file import');
+      }
+
+      const rows = XLSX.utils.sheet_to_json<(string | number | boolean | null)[]>(firstSheet, {
+        header: 1,
+        raw: false,
+        defval: '',
+      });
+
+      const header = (rows[0] ?? []).map((item) => String(item ?? ''));
+      if (header.length === 0) {
+        throw new Error('File import không có dòng tiêu đề hợp lệ');
+      }
+
+      const failedRows = Array.from(
+        new Set(importResult.errors.map((item) => item.row).filter((row) => Number.isFinite(row) && row > 1))
+      ).sort((a, b) => a - b);
+
+      const errorByRow = new Map<number, string[]>();
+      importResult.errors.forEach((item) => {
+        const list = errorByRow.get(item.row) ?? [];
+        list.push(item.message + (item.studentCode ? ` (${item.studentCode})` : ''));
+        errorByRow.set(item.row, list);
+      });
+
+      const exportRows: (string | number | boolean | null)[][] = [[...header, 'Lỗi import']];
+
+      failedRows.forEach((rowNumber) => {
+        const sourceRow = rows[rowNumber - 1] ?? [];
+        const normalized = [...sourceRow];
+        while (normalized.length < header.length) normalized.push('');
+        const messages = Array.from(new Set(errorByRow.get(rowNumber) ?? []));
+        exportRows.push([...normalized, messages.join(' | ')]);
+      });
+
+      if (exportRows.length === 1) {
+        exportRows.push(['', '', '', '', '', 'Không trích xuất được dòng lỗi từ file gốc']);
+      }
+
+      const outWb = XLSX.utils.book_new();
+      const outSheet = XLSX.utils.aoa_to_sheet(exportRows);
+      XLSX.utils.book_append_sheet(outWb, outSheet, 'students_errors');
+
+      const baseName = importFile.name.replace(/\.[^.]+$/, '');
+      XLSX.writeFile(outWb, `${baseName}_errors.xlsx`);
+      notify.success('Đã tải file lỗi import');
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : 'Không thể tạo file lỗi import');
+    } finally {
+      setIsDownloadingErrorFile(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
@@ -815,6 +929,7 @@ export function SinhVienPage() {
             onClick={() => {
               setImportError('');
               setImportResult(null);
+              setShowImportErrorModal(false);
               setImportFile(null);
               setShowImportModal(true);
             }}
@@ -1037,7 +1152,6 @@ export function SinhVienPage() {
         isOpen={showImportModal}
         selectedFile={importFile}
         isPending={importMutation.isPending}
-        result={importResult}
         error={importError}
         onClose={() => {
           setShowImportModal(false);
@@ -1048,6 +1162,17 @@ export function SinhVienPage() {
         onSelectFile={handleSelectImportFile}
         onImport={handleImportExcel}
         onDownloadTemplate={handleDownloadTemplate}
+      />
+
+      <ImportErrorModal
+        isOpen={showImportErrorModal}
+        result={importResult}
+        isDownloading={isDownloadingErrorFile}
+        onDownloadErrorFile={handleDownloadErrorFile}
+        onClose={() => {
+          setShowImportErrorModal(false);
+          setImportResult(null);
+        }}
       />
 
       {showEditModal && (
