@@ -3,6 +3,8 @@ import type {
   CreateSinhVienDto,
   UpdateSinhVienDto,
   StudentFilter,
+  LopHanhChinhOption,
+  StudentFaceItem,
   PaginatedResult,
 } from '../types';
 
@@ -29,7 +31,13 @@ export interface IStudentService {
   delete(id: string): Promise<void>;
 
   /** Lấy danh sách tên lớp (để render filter dropdown) */
-  getLopOptions(): Promise<string[]>;
+  getLopOptions(): Promise<LopHanhChinhOption[]>;
+
+  listFaces(studentId: string): Promise<StudentFaceItem[]>;
+
+  addFace(studentId: string, imageUrl: string): Promise<StudentFaceItem>;
+
+  deleteFace(studentId: string, faceId: string): Promise<void>;
 
   /** Import danh sách từ Excel (data đã được parse ở UI) */
   importFromExcel(rows: CreateSinhVienDto[]): Promise<{ imported: number; errors: string[] }>;

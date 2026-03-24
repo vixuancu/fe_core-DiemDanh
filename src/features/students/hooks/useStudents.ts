@@ -11,7 +11,8 @@ export const studentKeys = {
   lists: () => [...studentKeys.all, 'list'] as const,
   list: (filter: StudentFilter) => [...studentKeys.lists(), filter] as const,
   detail: (id: string) => [...studentKeys.all, 'detail', id] as const,
-  lopOptions: () => [...studentKeys.all, 'lop-options'] as const,
+  faces: (id: string) => [...studentKeys.all, 'faces', id] as const,
+  classOptions: () => [...studentKeys.all, 'class-options'] as const,
 };
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -24,7 +25,7 @@ export function useStudents(filter: StudentFilter) {
   return useQuery({
     queryKey: studentKeys.list(filter),
     queryFn: () => studentService.list(filter),
-    placeholderData: (prev) => prev, // giữ data cũ khi chuyển trang (smooth UX)
+    retry: false,
   });
 }
 
@@ -40,9 +41,19 @@ export function useStudent(id: string) {
 /** Lấy danh sách tên lớp cho dropdown filter */
 export function useLopOptions() {
   return useQuery({
-    queryKey: studentKeys.lopOptions(),
+    queryKey: studentKeys.classOptions(),
     queryFn: () => studentService.getLopOptions(),
     staleTime: Infinity, // lớp ít thay đổi, cache mãi
+    retry: false,
+  });
+}
+
+export function useStudentFaces(studentId: string, enabled = true) {
+  return useQuery({
+    queryKey: studentKeys.faces(studentId),
+    queryFn: () => studentService.listFaces(studentId),
+    enabled: enabled && !!studentId,
+    retry: false,
   });
 }
 
@@ -53,7 +64,7 @@ export function useCreateStudent() {
     mutationFn: (dto: CreateSinhVienDto) => studentService.create(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: studentKeys.lopOptions() });
+      queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
       notify.success('Thêm sinh viên thành công');
     },
     onError: (error) => {
@@ -97,6 +108,40 @@ export function useDeleteStudent() {
   });
 }
 
+export function useAddStudentFace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, imageUrl }: { studentId: string; imageUrl: string }) =>
+      studentService.addFace(studentId, imageUrl),
+    onSuccess: (_data, { studentId }) => {
+      queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
+      queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      notify.success('Đã thêm ảnh khuôn mặt');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Thêm ảnh khuôn mặt thất bại';
+      notify.error(message);
+    },
+  });
+}
+
+export function useDeleteStudentFace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, faceId }: { studentId: string; faceId: string }) =>
+      studentService.deleteFace(studentId, faceId),
+    onSuccess: (_data, { studentId }) => {
+      queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
+      queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      notify.success('Đã xóa ảnh khuôn mặt');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Xóa ảnh khuôn mặt thất bại';
+      notify.error(message);
+    },
+  });
+}
+
 /** Import từ Excel */
 export function useImportStudents() {
   const queryClient = useQueryClient();
@@ -104,7 +149,7 @@ export function useImportStudents() {
     mutationFn: (rows: CreateSinhVienDto[]) => studentService.importFromExcel(rows),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: studentKeys.lopOptions() });
+      queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
       notify.success('Import sinh viên thành công');
     },
     onError: (error) => {
