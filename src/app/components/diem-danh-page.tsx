@@ -6,6 +6,7 @@ import { trangThaiLabels, trangThaiColors } from '@/shared/types';
 import { ScanFace, Play, Square, CheckCircle, Clock, XCircle, Edit, Save, Camera, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
 import type { DiemDanh } from '@/features/attendances/types';
+import { formatDateVi, localDateToYmd } from '@/shared/lib/date-time';
 
 interface ToastNotification {
   id: string;
@@ -21,8 +22,8 @@ export function DiemDanhPage() {
   const nextMonth = new Date();
   nextMonth.setDate(today.getDate() + 30);
   const { data: schedulesData } = useSchedules({
-    tuNgay: today.toISOString().split('T')[0],
-    denNgay: nextMonth.toISOString().split('T')[0],
+    tuNgay: localDateToYmd(today),
+    denNgay: localDateToYmd(nextMonth),
     perPage: 100,
     giangVienId: user?.role === 'giang_vien' ? user.id : undefined,
   });
@@ -122,7 +123,7 @@ export function DiemDanhPage() {
               <option value="">-- Chọn buổi học --</option>
               {schedules.map(l => (
                 <option key={l.id} value={l.id}>
-                  {l.tenMonHoc} - {l.caHoc} (Tiết {l.tietBatDau}-{l.tietKetThuc}) - {l.tenPhong} - {new Date(l.ngayHoc).toLocaleDateString('vi-VN')}
+                  {l.tenMonHoc} - {l.caHoc} (Tiết {l.tietBatDau}-{l.tietKetThuc}) - {l.tenPhong} - {formatDateVi(l.ngayHoc)}
                 </option>
               ))}
             </PortableSelect>

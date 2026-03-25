@@ -10,6 +10,7 @@ import { caHocLabels } from '@/shared/types';
 import { Plus, Edit, Trash2, X, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { PortableSelect } from './ui/portable-form-controls';
+import { localDateToYmd } from '@/shared/lib/date-time';
 
 // ─── Constants & Utils ───────────────────────────────────────────────────────
 
@@ -229,9 +230,7 @@ export function LichHocPage() {
   const weekDates = selectedWeek ? getWeekDatesFromStart(selectedWeek.startDate) : [];
 
   const formatDateForApi = (d: Date) => {
-    const local = new Date(d);
-    local.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return local.toJSON().slice(0, 10);
+    return localDateToYmd(d);
   };
   
   const tuNgay = selectedWeek ? formatDateForApi(selectedWeek.startDate) : '';

@@ -8,6 +8,7 @@ import { mockSinhVien, mockGiangVien, mockCamera } from './data'; // Giữ lại
 import { Users, GraduationCap, BookOpen, Camera, CheckCircle, CalendarDays, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { trangThaiLabels } from '@/shared/types';
+import { formatDateVi } from '@/shared/lib/date-time';
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -154,7 +155,7 @@ export function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{lich.tenMonHoc}</p>
-                    <p className="text-xs text-muted-foreground">Mã lớp: {lich.maLop} - Ngày: {new Date(lich.ngayHoc).toLocaleDateString('vi-VN')}</p>
+                    <p className="text-xs text-muted-foreground">Mã lớp: {lich.maLop} - Ngày: {formatDateVi(lich.ngayHoc)}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm">{lich.tenPhong}</p>

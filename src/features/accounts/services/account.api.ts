@@ -3,6 +3,7 @@ import type { AccountRoleOption, IAccountService } from './account.service';
 import type { Account, AccountFilter, CreateAccountDto, UpdateAccountDto } from '../types';
 import type { PaginatedResult } from '@/shared/types';
 import { forceLogout, getAccessToken } from '@/features/auth/session';
+import { toDateInputValue } from '@/shared/lib/date-time';
 
 const API_URL = `${config.apiBaseUrl}/accounts`;
 
@@ -79,13 +80,6 @@ function resolveRoleId(role: Account['role']): number {
   return resolved;
 }
 
-function toIsoDate(date?: string | null): string {
-  if (!date) return '';
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0, 10);
-}
-
 function mapAccount(item: BackendAccount): Account {
   return {
     id: String(item.id),
@@ -93,7 +87,7 @@ function mapAccount(item: BackendAccount): Account {
     hoTen: item.full_name?.trim() || item.username,
     email: item.email,
     gioiTinh: item.gender ?? null,
-    ngaySinh: toIsoDate(item.birth_of_date),
+    ngaySinh: toDateInputValue(item.birth_of_date),
     role: normalizeRole(item.role_name),
     trangThai: item.is_cancel ? 'locked' : 'active',
   };
