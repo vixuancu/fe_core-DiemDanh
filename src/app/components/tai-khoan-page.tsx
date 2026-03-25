@@ -15,6 +15,7 @@ import { PortableSelect } from './ui/portable-form-controls';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { notify } from '@/shared/lib/notify';
 import { formatDateVi } from '@/shared/lib/date-time';
+import { buildPaginationItems } from '@/shared/lib/pagination';
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -83,6 +84,16 @@ export function TaiKhoanPage() {
   const roleOptions = roleOptionsData ?? [];
   const errorMessage = error instanceof Error ? error.message : '';
   const isForbidden = errorMessage.includes('403') || errorMessage.toLowerCase().includes('quyền');
+  const paginationItems = React.useMemo(
+    () => buildPaginationItems(meta.page, meta.lastPage, 1, 1),
+    [meta.page, meta.lastPage]
+  );
+
+  useEffect(() => {
+    if (currentPage > meta.lastPage) {
+      setCurrentPage(meta.lastPage > 0 ? meta.lastPage : 1);
+    }
+  }, [currentPage, meta.lastPage]);
 
   useEffect(() => {
     if (!errorMessage || errorMessage === lastErrorRef.current) return;
@@ -379,14 +390,18 @@ export function TaiKhoanPage() {
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={meta.page === 1} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              {Array.from({ length: meta.lastPage }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${meta.page === i + 1 ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
-                >
-                  {i + 1}
-                </button>
+              {paginationItems.map((item, idx) => (
+                item === '...'
+                  ? <span key={`ellipsis-${idx}`} className="w-8 h-8 inline-flex items-center justify-center text-muted-foreground">...</span>
+                  : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item)}
+                      className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${meta.page === item ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
+                    >
+                      {item}
+                    </button>
+                  )
               ))}
               <button onClick={() => setCurrentPage(p => Math.min(meta.lastPage, p + 1))} disabled={meta.page === meta.lastPage} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                 <ChevronRight className="w-4 h-4" />

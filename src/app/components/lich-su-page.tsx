@@ -6,6 +6,7 @@ import { trangThaiLabels, trangThaiColors } from '@/shared/types';
 import { Search, ChevronLeft, ChevronRight, Download, FileText, Loader2 } from 'lucide-react';
 import { PortableDateInput, PortableSelect } from './ui/portable-form-controls';
 import type { TrangThaiDiemDanh } from '@/shared/types';
+import { buildPaginationItems } from '@/shared/lib/pagination';
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -46,6 +47,17 @@ export function LichSuPage() {
     page: attendancesData?.page ?? 1,
     lastPage: attendancesData?.totalPages ?? 1,
   };
+
+  const paginationItems = React.useMemo(
+    () => buildPaginationItems(meta.page, meta.lastPage, 1, 1),
+    [meta.page, meta.lastPage]
+  );
+
+  React.useEffect(() => {
+    if (currentPage > meta.lastPage) {
+      setCurrentPage(meta.lastPage > 0 ? meta.lastPage : 1);
+    }
+  }, [currentPage, meta.lastPage]);
 
   return (
     <div>
@@ -210,14 +222,18 @@ export function LichSuPage() {
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={meta.page === 1} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              {Array.from({ length: meta.lastPage }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${meta.page === i + 1 ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
-                >
-                  {i + 1}
-                </button>
+              {paginationItems.map((item, idx) => (
+                item === '...'
+                  ? <span key={`ellipsis-${idx}`} className="w-8 h-8 inline-flex items-center justify-center text-muted-foreground">...</span>
+                  : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item)}
+                      className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${meta.page === item ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
+                    >
+                      {item}
+                    </button>
+                  )
               ))}
               <button onClick={() => setCurrentPage(p => Math.min(meta.lastPage, p + 1))} disabled={meta.page === meta.lastPage} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                 <ChevronRight className="w-4 h-4" />

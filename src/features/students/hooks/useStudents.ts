@@ -30,6 +30,7 @@ export function useStudents(filter: StudentFilter) {
   return useQuery({
     queryKey: studentKeys.list(filter),
     queryFn: () => studentService.list(filter),
+    placeholderData: (prev) => prev,
     retry: false,
   });
 }

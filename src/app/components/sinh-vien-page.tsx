@@ -38,6 +38,7 @@ import {
 import { PortableSelect } from './ui/portable-form-controls';
 import { formatDateVi } from '@/shared/lib/date-time';
 import { notify } from '@/shared/lib/notify';
+import { buildPaginationItems } from '@/shared/lib/pagination';
 
 const perPageOptions = [10, 20, 30, 40];
 const MAX_FACE_FILES = 20;
@@ -576,7 +577,7 @@ export function SinhVienPage() {
   const { data, isLoading, isError, error } = useStudents({
     search: search || undefined,
     lopHanhChinhId: filterClass || undefined,
-    trangThai: filterStatus,
+    trangThai: filterStatus || undefined,
     page: currentPage,
     perPage,
   });
@@ -599,13 +600,32 @@ export function SinhVienPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, filterClass, filterStatus, perPage]);
+  }, [search, filterClass, perPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus]);
+
+  const handleChangeStatusFilter = (value: 'active' | 'locked' | '') => {
+    setFilterStatus(value);
+  };
 
   const summary = useMemo(() => {
     const active = students.filter((item) => item.trangThai === 'active').length;
     const locked = students.filter((item) => item.trangThai === 'locked').length;
     return { active, locked };
   }, [students]);
+
+  const paginationItems = useMemo(
+    () => buildPaginationItems(currentPage, totalPages, 1, 1),
+    [currentPage, totalPages]
+  );
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages > 0 ? totalPages : 1);
+    }
+  }, [currentPage, totalPages]);
 
   const updateFormField = <K extends keyof StudentFormState>(
     target: 'create' | 'edit',
@@ -989,7 +1009,7 @@ export function SinhVienPage() {
         </PortableSelect>
         <PortableSelect
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as 'active' | 'locked' | '')}
+          onChange={(e) => handleChangeStatusFilter(e.target.value as 'active' | 'locked' | '')}
           className="px-4 py-2 rounded-lg border border-border text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30 min-w-[180px]"
           labelClassName="text-sm"
         >
@@ -1102,14 +1122,18 @@ export function SinhVienPage() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${currentPage === i + 1 ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
-              >
-                {i + 1}
-              </button>
+            {paginationItems.map((item, idx) => (
+              item === '...'
+                ? <span key={`ellipsis-${idx}`} className="w-8 h-8 inline-flex items-center justify-center text-muted-foreground">...</span>
+                : (
+                  <button
+                    key={item}
+                    onClick={() => setCurrentPage(item)}
+                    className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${currentPage === item ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
+                  >
+                    {item}
+                  </button>
+                )
             ))}
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
