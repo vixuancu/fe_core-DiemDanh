@@ -100,6 +100,16 @@ export const administrativeClassMock: IAdministrativeClassService = {
     return STORE[index];
   },
 
+  async hardDelete(id: string): Promise<void> {
+    await delay(180);
+    const index = STORE.findIndex((item) => item.id === id);
+    if (index === -1) throw new Error('Lớp hành chính không tồn tại');
+    if (STORE[index].studentCount > 0) {
+      throw new Error('Không thể xóa hẳn lớp hành chính đang có sinh viên');
+    }
+    STORE.splice(index, 1);
+  },
+
   async getStats(filter: Pick<AdministrativeClassFilter, 'search'>): Promise<AdministrativeClassStats> {
     await delay(120);
     const keyword = normalize(filter.search || '');

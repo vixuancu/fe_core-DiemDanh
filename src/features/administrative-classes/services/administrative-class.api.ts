@@ -166,6 +166,14 @@ export const administrativeClassApi: IAdministrativeClassService = {
     return mapItem(payload.data);
   },
 
+  async hardDelete(id: string): Promise<void> {
+    const res = await fetch(`${API_URL}/${id}/hard`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    await parseEnvelope<null>(res);
+  },
+
   async getStats(filter: Pick<AdministrativeClassFilter, 'search'>): Promise<AdministrativeClassStats> {
     const params = new URLSearchParams();
     if (filter.search) params.set('search', filter.search);

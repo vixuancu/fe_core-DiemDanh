@@ -7,6 +7,7 @@ import {
   Lock,
   Plus,
   Search,
+  Trash2,
   Unlock,
   X,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import {
   useAdministrativeClassStats,
   useAdministrativeClasses,
   useCreateAdministrativeClass,
+  useHardDeleteAdministrativeClass,
   useLockAdministrativeClass,
   useUnlockAdministrativeClass,
   useUpdateAdministrativeClass,
@@ -114,6 +116,7 @@ export function LopHanhChinhPage() {
   const updateMutation = useUpdateAdministrativeClass();
   const lockMutation = useLockAdministrativeClass();
   const unlockMutation = useUnlockAdministrativeClass();
+  const hardDeleteMutation = useHardDeleteAdministrativeClass();
 
   const items = data?.data ?? [];
   const total = data?.total ?? 0;
@@ -196,6 +199,14 @@ export function LopHanhChinhPage() {
       return;
     }
     unlockMutation.mutate(item.id);
+  };
+
+  const handleHardDelete = (item: AdministrativeClassItem) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn xóa hẳn lớp '${item.name}'? Hành động này không thể hoàn tác.`
+    );
+    if (!confirmed) return;
+    hardDeleteMutation.mutate(item.id);
   };
 
   return (
@@ -308,6 +319,13 @@ export function LopHanhChinhPage() {
                           ) : (
                             <Unlock className="w-4 h-4 text-green-600" />
                           )}
+                        </button>
+                        <button
+                          onClick={() => handleHardDelete(item)}
+                          className="p-1.5 rounded hover:bg-muted cursor-pointer"
+                          title="Xóa hẳn"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
                       </div>
                     </td>

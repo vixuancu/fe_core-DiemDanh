@@ -14,5 +14,6 @@ export interface IAdministrativeClassService {
   update(id: string, dto: UpdateAdministrativeClassDto): Promise<AdministrativeClassItem>;
   lock(id: string): Promise<AdministrativeClassItem>;
   unlock(id: string): Promise<AdministrativeClassItem>;
+  hardDelete(id: string): Promise<void>;
   getStats(filter: Pick<AdministrativeClassFilter, 'search'>): Promise<AdministrativeClassStats>;
 }

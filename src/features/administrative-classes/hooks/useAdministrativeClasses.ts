@@ -100,3 +100,19 @@ export function useUnlockAdministrativeClass() {
     },
   });
 }
+
+export function useHardDeleteAdministrativeClass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => administrativeClassService.hardDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: administrativeClassKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: administrativeClassKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['students', 'class-options'] });
+      notify.success('Xóa hẳn lớp hành chính thành công');
+    },
+    onError: (error) => {
+      notify.error(error instanceof Error ? error.message : 'Xóa hẳn lớp hành chính thất bại');
+    },
+  });
+}
