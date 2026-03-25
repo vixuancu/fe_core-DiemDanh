@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router';
 import {
-  LayoutDashboard, GraduationCap, BookOpen, Building2, CalendarDays,
+  LayoutDashboard, GraduationCap, School, BookOpen, Building2, CalendarDays,
   ScanFace, History, BarChart3, Camera, UserCog, LogOut, Menu, X,
   ChevronDown, Bell, ClipboardCheck,
 } from 'lucide-react';
@@ -20,6 +20,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Tổng quan', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
   { label: 'Quản lý sinh viên', path: '/sinh-vien', icon: <GraduationCap className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
+  { label: 'Lớp hành chính', path: '/lop-hanh-chinh', icon: <School className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
   { label: 'Lớp tín chỉ', path: '/lop-tin-chi', icon: <BookOpen className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
   { label: 'Phòng học', path: '/phong-hoc', icon: <Building2 className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
   { label: 'Lịch dạy', path: '/lich-hoc', icon: <CalendarDays className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },

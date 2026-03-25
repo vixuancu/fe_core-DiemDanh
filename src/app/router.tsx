@@ -11,6 +11,7 @@ import { LoginPage } from '@/app/components/login-page';
 // Pages (import từ components cũ — sẽ dần migrate theo từng phase)
 import { DashboardPage } from '@/app/components/dashboard-page';
 import { SinhVienPage } from '@/app/components/sinh-vien-page';
+import { LopHanhChinhPage } from '@/app/components/lop-hanh-chinh-page';
 import { LopTinChiPage } from '@/app/components/lop-tin-chi-page';
 import { PhongHocPage } from '@/app/components/phong-hoc-page';
 import { LichHocPage } from '@/app/components/lich-hoc-page';
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
             element: <RoleGuard allowedRoles={['admin', 'giao_vu']} />,
             children: [
               { path: 'sinh-vien', element: <SinhVienPage /> },
+              { path: 'lop-hanh-chinh', element: <LopHanhChinhPage /> },
               { path: 'lop-tin-chi', element: <LopTinChiPage /> },
               { path: 'phong-hoc', element: <PhongHocPage /> },
               { path: 'diem-danh', element: <DiemDanhPage /> },
