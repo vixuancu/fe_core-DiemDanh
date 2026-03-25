@@ -53,6 +53,12 @@ export interface StudentImportResult {
   errors: StudentImportErrorItem[];
 }
 
+export interface StudentStats {
+  total: number;
+  active: number;
+  locked: number;
+}
+
 // ─── Filter ───────────────────────────────────────────────────────────────────
 
 export interface StudentFilter {

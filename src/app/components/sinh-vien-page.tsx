@@ -7,6 +7,7 @@ import {
   useDeleteStudent,
   useImportStudents,
   useLopOptions,
+  useStudentStats,
   useStudentFaces,
   useStudents,
   useUpdateStudent,
@@ -582,6 +583,10 @@ export function SinhVienPage() {
     perPage,
   });
   const { data: classOptions = [] } = useLopOptions();
+  const { data: stats } = useStudentStats({
+    search: search || undefined,
+    lopHanhChinhId: filterClass || undefined,
+  });
   const createMutation = useCreateStudent();
   const updateMutation = useUpdateStudent();
   const deleteMutation = useDeleteStudent();
@@ -610,11 +615,11 @@ export function SinhVienPage() {
     setFilterStatus(value);
   };
 
-  const summary = useMemo(() => {
-    const active = students.filter((item) => item.trangThai === 'active').length;
-    const locked = students.filter((item) => item.trangThai === 'locked').length;
-    return { active, locked };
-  }, [students]);
+  const summary = useMemo(() => ({
+    total: stats?.total ?? total,
+    active: stats?.active ?? 0,
+    locked: stats?.locked ?? 0,
+  }), [stats, total]);
 
   const paginationItems = useMemo(
     () => buildPaginationItems(currentPage, totalPages, 1, 1),
@@ -974,7 +979,7 @@ export function SinhVienPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
         <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-[#009dd9]">{total}</p>
+          <p className="text-2xl text-[#009dd9]">{summary.total}</p>
           <p className="text-xs text-muted-foreground mt-1">Tổng sinh viên</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-border text-center">

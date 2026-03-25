@@ -6,6 +6,7 @@ import type {
   LopHanhChinhOption,
   StudentFaceItem,
   StudentImportResult,
+  StudentStats,
   PaginatedResult,
 } from '../types';
 
@@ -33,6 +34,8 @@ export interface IStudentService {
 
   /** Lấy danh sách tên lớp (để render filter dropdown) */
   getLopOptions(): Promise<LopHanhChinhOption[]>;
+
+  getStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>): Promise<StudentStats>;
 
   listFaces(studentId: string): Promise<StudentFaceItem[]>;
 

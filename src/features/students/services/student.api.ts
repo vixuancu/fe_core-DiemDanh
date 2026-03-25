@@ -10,6 +10,7 @@ import type {
   StudentFaceItem,
   StudentFilter,
   StudentImportResult,
+  StudentStats,
   UpdateSinhVienDto,
 } from '../types';
 
@@ -67,6 +68,12 @@ interface BackendImportResult {
   errors: BackendImportError[];
 }
 
+interface BackendStudentStats {
+  total: number;
+  active_count: number;
+  locked_count: number;
+}
+
 const API_URL = `${config.apiBaseUrl}/students`;
 
 class ApiError extends Error {
@@ -111,6 +118,14 @@ function mapImportResult(item: BackendImportResult): StudentImportResult {
       studentCode: error.student_code || undefined,
       message: error.message,
     })),
+  };
+}
+
+function mapStats(item: BackendStudentStats): StudentStats {
+  return {
+    total: item.total,
+    active: item.active_count,
+    locked: item.locked_count,
   };
 }
 
@@ -225,6 +240,19 @@ export const studentApi: IStudentService = {
     });
     const payload = await parseListEnvelope<BackendAdministrativeClass>(res);
     return payload.data.map((item) => ({ id: String(item.id), name: item.name }));
+  },
+
+  async getStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>): Promise<StudentStats> {
+    const params = new URLSearchParams();
+    if (filter.search) params.set('search', filter.search);
+    if (filter.lopHanhChinhId) params.set('administrative_class_id', filter.lopHanhChinhId);
+
+    const query = params.toString();
+    const res = await fetch(`${API_URL}/stats${query ? `?${query}` : ''}`, {
+      headers: getAuthHeaders(),
+    });
+    const payload = await parseEnvelope<BackendStudentStats>(res);
+    return mapStats(payload.data);
   },
 
   async importFromExcel(file: File): Promise<StudentImportResult> {

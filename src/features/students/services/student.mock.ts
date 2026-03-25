@@ -7,6 +7,7 @@ import type {
   StudentFaceItem,
   StudentFilter,
   StudentImportResult,
+  StudentStats,
   UpdateSinhVienDto,
 } from '../types';
 
@@ -198,6 +199,24 @@ export const studentMock: IStudentService = {
   async getLopOptions(): Promise<LopHanhChinhOption[]> {
     await delay(150);
     return [...CLASS_OPTIONS];
+  },
+
+  async getStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>): Promise<StudentStats> {
+    await delay(120);
+    const keyword = (filter.search || '').trim().toLowerCase();
+    const filtered = STORE.filter((item) => {
+      const matchSearch = !keyword
+        || item.hoTen.toLowerCase().includes(keyword)
+        || item.maSV.toLowerCase().includes(keyword);
+      const matchClass = !filter.lopHanhChinhId || item.lopHanhChinhId === filter.lopHanhChinhId;
+      return matchSearch && matchClass;
+    });
+
+    return {
+      total: filtered.length,
+      active: filtered.filter((item) => item.trangThai === 'active').length,
+      locked: filtered.filter((item) => item.trangThai === 'locked').length,
+    };
   },
 
   async importFromExcel(file: File): Promise<StudentImportResult> {

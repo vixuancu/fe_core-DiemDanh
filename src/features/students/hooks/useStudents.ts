@@ -4,6 +4,7 @@ import type {
   StudentFilter,
   CreateSinhVienDto,
   StudentImportResult,
+  StudentStats,
   UpdateSinhVienDto,
 } from '../types';
 import { notify } from '@/shared/lib/notify';
@@ -15,6 +16,7 @@ export const studentKeys = {
   all: ['students'] as const,
   lists: () => [...studentKeys.all, 'list'] as const,
   list: (filter: StudentFilter) => [...studentKeys.lists(), filter] as const,
+  stats: (filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>) => [...studentKeys.all, 'stats', filter] as const,
   detail: (id: string) => [...studentKeys.all, 'detail', id] as const,
   faces: (id: string) => [...studentKeys.all, 'faces', id] as const,
   classOptions: () => [...studentKeys.all, 'class-options'] as const,
@@ -54,6 +56,15 @@ export function useLopOptions() {
   });
 }
 
+export function useStudentStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>) {
+  return useQuery({
+    queryKey: studentKeys.stats(filter),
+    queryFn: () => studentService.getStats(filter),
+    placeholderData: (prev: StudentStats | undefined) => prev,
+    retry: false,
+  });
+}
+
 export function useStudentFaces(studentId: string, enabled = true) {
   return useQuery({
     queryKey: studentKeys.faces(studentId),
@@ -70,6 +81,7 @@ export function useCreateStudent() {
     mutationFn: (dto: CreateSinhVienDto) => studentService.create(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
       queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
       notify.success('Thêm sinh viên thành công');
     },
@@ -88,6 +100,7 @@ export function useUpdateStudent() {
       studentService.update(id, dto),
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
       queryClient.invalidateQueries({ queryKey: studentKeys.detail(id) });
       notify.success('Cập nhật sinh viên thành công');
     },
@@ -105,6 +118,7 @@ export function useDeleteStudent() {
     mutationFn: (id: string) => studentService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
       notify.success('Xóa sinh viên thành công');
     },
     onError: (error) => {
@@ -122,6 +136,7 @@ export function useAddStudentFace() {
     onSuccess: (_data, { studentId }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
       notify.success('Đã thêm ảnh khuôn mặt');
     },
     onError: (error) => {
@@ -139,6 +154,7 @@ export function useDeleteStudentFace() {
     onSuccess: (_data, { studentId }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
       notify.success('Đã xóa ảnh khuôn mặt');
     },
     onError: (error) => {
@@ -155,6 +171,7 @@ export function useImportStudents() {
     mutationFn: (file: File) => studentService.importFromExcel(file),
     onSuccess: (result: StudentImportResult) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
       queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
       if (result.failedCount > 0) {
         notify.warning(`Đã import ${result.importedCount}/${result.totalRows} dòng`);
