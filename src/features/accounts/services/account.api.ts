@@ -1,8 +1,9 @@
 import { config } from '@/shared/config/env';
-import type { IAccountService } from './account.service';
+import type { AccountRoleOption, IAccountService } from './account.service';
 import type { Account, AccountFilter, CreateAccountDto, UpdateAccountDto } from '../types';
 import type { PaginatedResult } from '@/shared/types';
 import { forceLogout, getAccessToken } from '@/features/auth/session';
+import { toDateInputValue } from '@/shared/lib/date-time';
 
 const API_URL = `${config.apiBaseUrl}/accounts`;
 
@@ -34,6 +35,11 @@ interface BackendAccount {
     is_cancel: boolean;
 }
 
+interface BackendRole {
+    id: number;
+    role_name: string;
+}
+
 class ApiError extends Error {
     status: number;
 
@@ -58,17 +64,20 @@ function normalizeRole(roleName?: string | null): Account['role'] {
     return 'giao_vu';
 }
 
-function roleToRoleId(role: Account['role']): number {
-    if (role === 'admin') return 4;
-    if (role === 'giao_vu') return 5;
-    return 6;
+function roleLabel(role: Account['role']): string {
+    if (role === 'admin') return 'Quản trị viên';
+    if (role === 'giao_vu') return 'Giáo vụ';
+    return 'Giảng viên';
 }
 
-function toIsoDate(date?: string | null): string {
-    if (!date) return '';
-    const d = new Date(date);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toISOString().slice(0, 10);
+let roleIdByRole: Partial<Record<Account['role'], number>> = {};
+
+function resolveRoleId(role: Account['role']): number {
+    const resolved = roleIdByRole[role];
+    if (!resolved) {
+        throw new ApiError('Không thể xác định role_id. Vui lòng tải lại trang.', 500);
+    }
+    return resolved;
 }
 
 function mapAccount(item: BackendAccount): Account {
@@ -78,7 +87,7 @@ function mapAccount(item: BackendAccount): Account {
         hoTen: item.full_name?.trim() || item.username,
         email: item.email,
         gioiTinh: item.gender ?? null,
-        ngaySinh: toIsoDate(item.birth_of_date),
+        ngaySinh: toDateInputValue(item.birth_of_date),
         role: normalizeRole(item.role_name),
         trangThai: item.is_cancel ? 'locked' : 'active',
     };
@@ -217,5 +226,96 @@ export const accountApi: IAccountService = {
             headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         });
         await parseEnvelope<null>(res);
+    }
+
+    return {
+        total: all.length,
+        giaoVu: all.filter((t) => t.role === 'giao_vu').length,
+        giangVien: all.filter((t) => t.role === 'giang_vien').length,
+        active: all.filter((t) => t.trangThai === 'active').length,
+        locked: all.filter((t) => t.trangThai === 'locked').length,
+    };
+},
+
+    async getRoles(): Promise<AccountRoleOption[]> {
+        const res = await fetch(`${API_URL}/roles`, {
+            headers: getAuthHeaders(),
+        });
+        const payload = await parseListEnvelope<BackendRole>(res);
+        const mapped = payload.data
+            .map((item) => {
+                const role = normalizeRole(item.role_name);
+                return {
+                    id: item.id,
+                    role,
+                    label: roleLabel(role),
+                };
+            })
+            .filter((item, index, arr) => arr.findIndex((r) => r.role === item.role) === index);
+
+        roleIdByRole = mapped.reduce<Partial<Record<Account['role'], number>>>((acc, item) => {
+            acc[item.role] = item.id;
+            return acc;
+        }, {});
+
+        return mapped;
+    },
+
+        async create(dto: CreateAccountDto): Promise < Account > {
+            if(!roleIdByRole[dto.role]) {
+    await this.getRoles();
+}
+
+const body = {
+    username: dto.username,
+    email: dto.email,
+    password: dto.password,
+    full_name: dto.hoTen || null,
+    gender: dto.gioiTinh ?? null,
+    birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : null,
+    role_id: resolveRoleId(dto.role),
+};
+
+const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(body),
+});
+const payload = await parseEnvelope<BackendAccount>(res);
+return mapAccount(payload.data);
+  },
+
+  async update(id: string, dto: UpdateAccountDto): Promise < Account > {
+    if(dto.role && !roleIdByRole[dto.role]) {
+    await this.getRoles();
+}
+
+const body: Record<string, unknown> = {
+    full_name: dto.hoTen,
+    gender: dto.gioiTinh,
+    birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : dto.ngaySinh === '' ? null : undefined,
+    is_cancel: dto.trangThai === undefined ? undefined : dto.trangThai === 'locked',
+    role_id: dto.role ? resolveRoleId(dto.role) : undefined,
+};
+
+const res = await fetch(`${API_URL}/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(body),
+});
+const payload = await parseEnvelope<BackendAccount>(res);
+return mapAccount(payload.data);
+  },
+
+  async delete (id: string): Promise < void> {
+    await this.update(id, { trangThai: 'locked' });
+},
+
+    async resetPassword(id: string): Promise < void> {
+        const res = await fetch(`${API_URL}/${id}/reset-password`, {
+            method: 'POST',
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        });
+        await parseEnvelope<null> (res);
     }
 };

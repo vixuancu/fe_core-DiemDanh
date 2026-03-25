@@ -1,6 +1,11 @@
 import { config } from '@/shared/config/env';
 import type { UserRole } from '@/shared/types';
-import type { IAuthService, LoginCredentials, User } from '../types';
+import type {
+  ForgotPasswordConfirmPayload,
+  IAuthService,
+  LoginCredentials,
+  User,
+} from '../types';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../session';
 
 /**
@@ -104,6 +109,30 @@ export const authApi: IAuthService = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    });
+
+    await parseEnvelope<null>(res);
+  },
+
+  async requestPasswordReset(email: string) {
+    const res = await fetch(`${config.apiBaseUrl}/auth/forgot-password/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    await parseEnvelope<null>(res);
+  },
+
+  async confirmPasswordReset(payload: ForgotPasswordConfirmPayload) {
+    const res = await fetch(`${config.apiBaseUrl}/auth/forgot-password/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: payload.email,
+        otp: payload.otp,
+        new_password: payload.newPassword,
+      }),
     });
 
     await parseEnvelope<null>(res);

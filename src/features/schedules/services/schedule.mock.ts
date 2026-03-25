@@ -1,6 +1,7 @@
 import type { IScheduleService, LopTinChiOption, PhongHocOption } from './schedule.service';
 import type { LichHoc, CreateLichHocDto, UpdateLichHocDto, ScheduleFilter } from '../types';
 import type { PaginatedResult } from '@/shared/types';
+import { parseDateStringToLocalDate } from '@/shared/lib/date-time';
 
 // Data mock options từ data.ts
 const MOCK_LOP: LopTinChiOption[] = [
@@ -54,8 +55,12 @@ export const scheduleMock: IScheduleService = {
       return match;
     });
 
-    // Sort by Date
-    filtered.sort((a, b) => new Date(a.ngayHoc).getTime() - new Date(b.ngayHoc).getTime());
+    // Sort by Date (local-safe)
+    filtered.sort((a, b) => {
+      const da = parseDateStringToLocalDate(a.ngayHoc)?.getTime() ?? 0;
+      const db = parseDateStringToLocalDate(b.ngayHoc)?.getTime() ?? 0;
+      return da - db;
+    });
 
     const total = filtered.length;
     const totalPages = Math.max(1, Math.ceil(total / perPage));
@@ -74,7 +79,7 @@ export const scheduleMock: IScheduleService = {
     const phong = MOCK_PHONG.find(p => p.id === dto.phongHocId);
     if (!phong) throw new Error('Phòng học không hợp lệ');
 
-    const d = new Date(dto.ngayHoc);
+    const d = parseDateStringToLocalDate(dto.ngayHoc) ?? new Date(dto.ngayHoc);
     const thu = d.getDay() === 0 ? 8 : d.getDay() + 1;
 
     const newSchedule: LichHoc = {
@@ -114,7 +119,7 @@ export const scheduleMock: IScheduleService = {
     }
     
     if (dto.ngayHoc) {
-      const d = new Date(dto.ngayHoc);
+      const d = parseDateStringToLocalDate(dto.ngayHoc) ?? new Date(dto.ngayHoc);
       item.thu = d.getDay() === 0 ? 8 : d.getDay() + 1;
       item.ngayHoc = dto.ngayHoc;
     }

@@ -1,4 +1,9 @@
-import type { IAuthService, LoginCredentials, User } from '../types';
+import type {
+  ForgotPasswordConfirmPayload,
+  IAuthService,
+  LoginCredentials,
+  User,
+} from '../types';
 import { clearAccessToken } from '../session';
 
 // Mock users — giữ nguyên data từ data.ts cũ
@@ -10,6 +15,8 @@ const MOCK_USERS: User[] = [
 
 // Session in-memory (dùng cho mock)
 let _currentUser: User | null = null;
+const OTP_TTL_MS = 5 * 60 * 1000;
+const otpStore = new Map<string, { otp: string; expireAt: number }>();
 
 export const authMock: IAuthService = {
   async login({ username }) {
@@ -46,6 +53,40 @@ export const authMock: IAuthService = {
   async changePassword(_oldPassword, _newPassword) {
     await delay(400);
     // Mock: luôn thành công
+  },
+
+  async requestPasswordReset(email: string) {
+    await delay(400);
+    const normalizedEmail = email.trim().toLowerCase();
+    const found = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail);
+    if (!found) {
+      throw new Error('Email không tồn tại trong hệ thống');
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    otpStore.set(normalizedEmail, { otp, expireAt: Date.now() + OTP_TTL_MS });
+
+    console.info(`[MOCK] OTP for ${normalizedEmail}: ${otp}`);
+  },
+
+  async confirmPasswordReset(payload: ForgotPasswordConfirmPayload) {
+    await delay(500);
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    const found = MOCK_USERS.find((u) => u.email.toLowerCase() === normalizedEmail);
+    if (!found) {
+      throw new Error('Email không tồn tại trong hệ thống');
+    }
+
+    const cached = otpStore.get(normalizedEmail);
+    if (!cached || cached.expireAt < Date.now() || cached.otp !== payload.otp) {
+      throw new Error('Mã xác thực không đúng hoặc đã hết hạn');
+    }
+
+    if (!payload.newPassword || payload.newPassword.length < 6) {
+      throw new Error('Mật khẩu không hợp lệ');
+    }
+
+    otpStore.delete(normalizedEmail);
   },
 };
 

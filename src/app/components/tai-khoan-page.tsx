@@ -1,11 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { roleLabels } from './data';
 import type { UserRole } from '@/shared/types';
-import { useAccounts, useAccountStats, useCreateAccount, useUpdateAccount, useDeleteAccount, useResetPassword } from '@/features/accounts/hooks/useAccounts';
+import {
+  useAccounts,
+  useAccountStats,
+  useCreateAccount,
+  useUpdateAccount,
+  useDeleteAccount,
+  useResetPassword,
+  useAccountRoles,
+} from '@/features/accounts/hooks/useAccounts';
 import { Search, Plus, Edit, Lock, Unlock, Trash2, X, ChevronLeft, ChevronRight, KeyRound, Loader2 } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { notify } from '@/shared/lib/notify';
+import { formatDateVi } from '@/shared/lib/date-time';
+import { buildPaginationItems } from '@/shared/lib/pagination';
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -15,11 +25,16 @@ const roleColors: Record<UserRole, string> = {
   giang_vien: 'bg-cyan-100 text-cyan-700',
 };
 
-// Chỉ hiển thị các role có thể tạo (không bao gồm admin)
-const creatableRoles: { value: UserRole; label: string }[] = [
-  { value: 'giao_vu', label: 'Giáo vụ' },
-  { value: 'giang_vien', label: 'Giảng viên' },
-];
+type EditFormState = {
+  id: string;
+  username: string;
+  hoTen: string;
+  email: string;
+  gioiTinh: boolean | null;
+  ngaySinh: string;
+  role: UserRole;
+  trangThai: 'active' | 'locked';
+};
 
 export function TaiKhoanPage() {
   const { user } = useAuth();
@@ -28,6 +43,8 @@ export function TaiKhoanPage() {
   const [filterRole, setFilterRole] = useState<UserRole | ''>('');
   const [filterTrangThai, setFilterTrangThai] = useState<'active' | 'locked' | ''>('');
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editing, setEditing] = useState<EditFormState | null>(null);
   
   // Create state
   const [username, setUsername] = useState('');
@@ -50,6 +67,7 @@ export function TaiKhoanPage() {
   });
 
   const { data: statsData } = useAccountStats();
+  const { data: roleOptionsData } = useAccountRoles();
 
   const createMutation = useCreateAccount();
   const updateMutation = useUpdateAccount();
@@ -63,8 +81,19 @@ export function TaiKhoanPage() {
     lastPage: accountsData?.totalPages ?? 1,
   };
   const stats = statsData ?? { total: 0, giaoVu: 0, giangVien: 0, active: 0, locked: 0 };
+  const roleOptions = roleOptionsData ?? [];
   const errorMessage = error instanceof Error ? error.message : '';
   const isForbidden = errorMessage.includes('403') || errorMessage.toLowerCase().includes('quyền');
+  const paginationItems = React.useMemo(
+    () => buildPaginationItems(meta.page, meta.lastPage, 1, 1),
+    [meta.page, meta.lastPage]
+  );
+
+  useEffect(() => {
+    if (currentPage > meta.lastPage) {
+      setCurrentPage(meta.lastPage > 0 ? meta.lastPage : 1);
+    }
+  }, [currentPage, meta.lastPage]);
 
   useEffect(() => {
     if (!errorMessage || errorMessage === lastErrorRef.current) return;
@@ -73,10 +102,7 @@ export function TaiKhoanPage() {
   }, [errorMessage]);
 
   const formatDate = (value: string) => {
-    if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('vi-VN');
+    return formatDateVi(value);
   };
 
   const genderLabel = (value: boolean | null) => {
@@ -92,6 +118,47 @@ export function TaiKhoanPage() {
       {
         onSuccess: () => {
           setShowModal(false);
+        },
+      }
+    );
+  };
+
+  const handleOpenEdit = (accountId: string) => {
+    const found = accounts.find((item) => item.id === accountId);
+    if (!found) {
+      notify.error('Không tìm thấy dữ liệu tài khoản để chỉnh sửa');
+      return;
+    }
+    setEditing({
+      id: found.id,
+      username: found.username,
+      hoTen: found.hoTen,
+      email: found.email,
+      gioiTinh: found.gioiTinh,
+      ngaySinh: found.ngaySinh,
+      role: found.role,
+      trangThai: found.trangThai,
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editing) return;
+    updateMutation.mutate(
+      {
+        id: editing.id,
+        dto: {
+          hoTen: editing.hoTen,
+          gioiTinh: editing.gioiTinh,
+          ngaySinh: editing.ngaySinh,
+          role: editing.role,
+          trangThai: editing.trangThai,
+        },
+      },
+      {
+        onSuccess: () => {
+          setShowEditModal(false);
+          setEditing(null);
         },
       }
     );
@@ -194,8 +261,9 @@ export function TaiKhoanPage() {
           labelClassName="text-sm"
         >
           <option value="">Tất cả vai trò</option>
-          <option value="giao_vu">Giáo vụ</option>
-          <option value="giang_vien">Giảng viên</option>
+          {roleOptions.map((role) => (
+            <option key={role.id} value={role.role}>{role.label}</option>
+          ))}
         </PortableSelect>
         <PortableSelect
           value={filterTrangThai}
@@ -257,7 +325,11 @@ export function TaiKhoanPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-1">
-                        <button className="p-1.5 rounded hover:bg-muted transition cursor-pointer" title="Chỉnh sửa">
+                        <button
+                          onClick={() => handleOpenEdit(tk.id)}
+                          className="p-1.5 rounded hover:bg-muted transition cursor-pointer"
+                          title="Chỉnh sửa"
+                        >
                           <Edit className="w-4 h-4 text-muted-foreground" />
                         </button>
                         <button 
@@ -318,14 +390,18 @@ export function TaiKhoanPage() {
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={meta.page === 1} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              {Array.from({ length: meta.lastPage }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${meta.page === i + 1 ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
-                >
-                  {i + 1}
-                </button>
+              {paginationItems.map((item, idx) => (
+                item === '...'
+                  ? <span key={`ellipsis-${idx}`} className="w-8 h-8 inline-flex items-center justify-center text-muted-foreground">...</span>
+                  : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item)}
+                      className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${meta.page === item ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
+                    >
+                      {item}
+                    </button>
+                  )
               ))}
               <button onClick={() => setCurrentPage(p => Math.min(meta.lastPage, p + 1))} disabled={meta.page === meta.lastPage} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                 <ChevronRight className="w-4 h-4" />
@@ -352,8 +428,8 @@ export function TaiKhoanPage() {
                   className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
                   labelClassName="text-sm"
                 >
-                  {creatableRoles.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
+                  {roleOptions.map((r) => (
+                    <option key={r.id} value={r.role}>{r.label}</option>
                   ))}
                 </PortableSelect>
               </div>
@@ -441,6 +517,132 @@ export function TaiKhoanPage() {
               >
                 {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 Tạo tài khoản
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editing && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3>Cập nhật tài khoản</h3>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditing(null);
+                }}
+                className="p-1 rounded hover:bg-muted cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-1 text-sm">Username</label>
+                  <input
+                    value={editing.username}
+                    readOnly
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm text-muted-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm">Email</label>
+                  <input
+                    value={editing.email}
+                    readOnly
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-muted text-sm text-muted-foreground"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-sm">Họ và tên</label>
+                <input
+                  value={editing.hoTen}
+                  onChange={(e) => setEditing((prev) => prev ? { ...prev, hoTen: e.target.value } : prev)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                  placeholder="Nhập họ tên"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-1 text-sm">Giới tính</label>
+                  <PortableSelect
+                    value={editing.gioiTinh === null ? '' : String(editing.gioiTinh)}
+                    onChange={(e) => {
+                      const next = e.target.value === 'true' ? true : e.target.value === 'false' ? false : null;
+                      setEditing((prev) => prev ? { ...prev, gioiTinh: next } : prev);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                    labelClassName="text-sm"
+                  >
+                    <option value="">Khác</option>
+                    <option value="true">Nam</option>
+                    <option value="false">Nữ</option>
+                  </PortableSelect>
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm">Ngày sinh</label>
+                  <input
+                    type="date"
+                    value={editing.ngaySinh}
+                    onChange={(e) => setEditing((prev) => prev ? { ...prev, ngaySinh: e.target.value } : prev)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-1 text-sm">Vai trò</label>
+                  <PortableSelect
+                    value={editing.role}
+                    onChange={(e) => setEditing((prev) => prev ? { ...prev, role: e.target.value as UserRole } : prev)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                    labelClassName="text-sm"
+                  >
+                    {roleOptions.map((r) => (
+                      <option key={r.id} value={r.role}>{r.label}</option>
+                    ))}
+                  </PortableSelect>
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm">Trạng thái</label>
+                  <PortableSelect
+                    value={editing.trangThai}
+                    onChange={(e) => setEditing((prev) => prev ? { ...prev, trangThai: e.target.value as 'active' | 'locked' } : prev)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                    labelClassName="text-sm"
+                  >
+                    <option value="active">Hoạt động</option>
+                    <option value="locked">Đã khóa</option>
+                  </PortableSelect>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditing(null);
+                }}
+                className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted cursor-pointer"
+                disabled={updateMutation.isPending}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] cursor-pointer disabled:opacity-50"
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Lưu thay đổi
               </button>
             </div>
           </div>
