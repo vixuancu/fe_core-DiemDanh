@@ -178,65 +178,6 @@ export const accountApi: IAccountService = {
         };
     },
 
-    async create(dto: CreateAccountDto): Promise<Account> {
-        const body = {
-            username: dto.username,
-            email: dto.email,
-            password: dto.password,
-            full_name: dto.hoTen || null,
-            gender: dto.gioiTinh ?? null,
-            birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : null,
-            role_id: roleToRoleId(dto.role),
-        };
-
-        const res = await fetch(API_URL, {
-            method: 'POST',
-            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(body),
-        });
-        const payload = await parseEnvelope<BackendAccount>(res);
-        return mapAccount(payload.data);
-    },
-
-    async update(id: string, dto: UpdateAccountDto): Promise<Account> {
-        const body: Record<string, unknown> = {
-            full_name: dto.hoTen,
-            gender: dto.gioiTinh,
-            birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : dto.ngaySinh === '' ? null : undefined,
-            is_cancel: dto.trangThai === undefined ? undefined : dto.trangThai === 'locked',
-            role_id: dto.role ? roleToRoleId(dto.role) : undefined,
-        };
-
-        const res = await fetch(`${API_URL}/${id}`, {
-            method: 'PATCH',
-            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(body),
-        });
-        const payload = await parseEnvelope<BackendAccount>(res);
-        return mapAccount(payload.data);
-    },
-
-    async delete(id: string): Promise<void> {
-        await this.update(id, { trangThai: 'locked' });
-    },
-
-    async resetPassword(id: string): Promise<void> {
-        const res = await fetch(`${API_URL}/${id}/reset-password`, {
-            method: 'POST',
-            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-        });
-        await parseEnvelope<null>(res);
-    }
-
-    return {
-        total: all.length,
-        giaoVu: all.filter((t) => t.role === 'giao_vu').length,
-        giangVien: all.filter((t) => t.role === 'giang_vien').length,
-        active: all.filter((t) => t.trangThai === 'active').length,
-        locked: all.filter((t) => t.trangThai === 'locked').length,
-    };
-},
-
     async getRoles(): Promise<AccountRoleOption[]> {
         const res = await fetch(`${API_URL}/roles`, {
             headers: getAuthHeaders(),
@@ -261,61 +202,61 @@ export const accountApi: IAccountService = {
         return mapped;
     },
 
-        async create(dto: CreateAccountDto): Promise < Account > {
-            if(!roleIdByRole[dto.role]) {
-    await this.getRoles();
-}
+    async create(dto: CreateAccountDto): Promise<Account> {
+        if (!roleIdByRole[dto.role]) {
+            await this.getRoles();
+        }
 
-const body = {
-    username: dto.username,
-    email: dto.email,
-    password: dto.password,
-    full_name: dto.hoTen || null,
-    gender: dto.gioiTinh ?? null,
-    birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : null,
-    role_id: resolveRoleId(dto.role),
-};
+        const body = {
+            username: dto.username,
+            email: dto.email,
+            password: dto.password,
+            full_name: dto.hoTen || null,
+            gender: dto.gioiTinh ?? null,
+            birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : null,
+            role_id: resolveRoleId(dto.role),
+        };
 
-const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
-});
-const payload = await parseEnvelope<BackendAccount>(res);
-return mapAccount(payload.data);
-  },
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body),
+        });
+        const payload = await parseEnvelope<BackendAccount>(res);
+        return mapAccount(payload.data);
+    },
 
-  async update(id: string, dto: UpdateAccountDto): Promise < Account > {
-    if(dto.role && !roleIdByRole[dto.role]) {
-    await this.getRoles();
-}
+    async update(id: string, dto: UpdateAccountDto): Promise<Account> {
+        if (dto.role && !roleIdByRole[dto.role]) {
+            await this.getRoles();
+        }
 
-const body: Record<string, unknown> = {
-    full_name: dto.hoTen,
-    gender: dto.gioiTinh,
-    birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : dto.ngaySinh === '' ? null : undefined,
-    is_cancel: dto.trangThai === undefined ? undefined : dto.trangThai === 'locked',
-    role_id: dto.role ? resolveRoleId(dto.role) : undefined,
-};
+        const body: Record<string, unknown> = {
+            full_name: dto.hoTen,
+            gender: dto.gioiTinh,
+            birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : dto.ngaySinh === '' ? null : undefined,
+            is_cancel: dto.trangThai === undefined ? undefined : dto.trangThai === 'locked',
+            role_id: dto.role ? resolveRoleId(dto.role) : undefined,
+        };
 
-const res = await fetch(`${API_URL}/${id}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
-});
-const payload = await parseEnvelope<BackendAccount>(res);
-return mapAccount(payload.data);
-  },
+        const res = await fetch(`${API_URL}/${id}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify(body),
+        });
+        const payload = await parseEnvelope<BackendAccount>(res);
+        return mapAccount(payload.data);
+    },
 
-  async delete (id: string): Promise < void> {
-    await this.update(id, { trangThai: 'locked' });
-},
+    async delete(id: string): Promise<void> {
+        await this.update(id, { trangThai: 'locked' });
+    },
 
-    async resetPassword(id: string): Promise < void> {
+    async resetPassword(id: string): Promise<void> {
         const res = await fetch(`${API_URL}/${id}/reset-password`, {
             method: 'POST',
             headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         });
-        await parseEnvelope<null> (res);
-    }
+        await parseEnvelope<null>(res);
+    },
 };
