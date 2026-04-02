@@ -4,6 +4,11 @@ export const ERROR_MESSAGES: Record<string, string> = {
     'CLASSROOM_NOT_FOUND': 'Không tìm thấy thông tin phòng học.',
 
     'COURSE_NAME_IS_EXISTED': 'Tên học phần này đã tồn tại trong hệ thống.',
+    'COURSE_SECTION_NOT_FOUND': 'Không tìm thấy lớp tín chỉ.',
+    'COURSE_SECTION_NAME_IS_EXISTED': 'Mã lớp tín chỉ đã tồn tại trong hệ thống.',
+    'LECTURER_NOT_FOUND': 'Giảng viên không hợp lệ hoặc không tồn tại.',
+    'INVALID_DATE_RANGE': 'Khoảng ngày học không hợp lệ.',
+    'INVALID_TIME_RANGE': 'Khoảng giờ học không hợp lệ.',
 
     'CAMERA_IP_EXISTED': 'Địa chỉ IP này đã được gán cho một thiết bị khác.',
     'CAMERA_NOT_FOUND': 'Thiết bị camera không tồn tại.',

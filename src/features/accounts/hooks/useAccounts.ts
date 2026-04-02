@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountService } from '../services';
 import type { AccountFilter, CreateAccountDto, UpdateAccountDto } from '../types';
 import { notify } from '@/shared/lib/notify';
+import { creditClassKeys } from '@/features/credit-classes/hooks/useCreditClasses';
 
 export const accountKeys = {
   all: ['accounts'] as const,
@@ -42,6 +43,7 @@ export function useCreateAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
       queryClient.invalidateQueries({ queryKey: accountKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: creditClassKeys.formOptions() });
       notify.success('Tạo tài khoản thành công');
     },
     onError: (error) => {
@@ -59,6 +61,7 @@ export function useUpdateAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
       queryClient.invalidateQueries({ queryKey: accountKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: creditClassKeys.formOptions() });
       notify.success('Cập nhật tài khoản thành công');
     },
     onError: (error) => {
@@ -75,6 +78,7 @@ export function useDeleteAccount() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountKeys.lists() });
       queryClient.invalidateQueries({ queryKey: accountKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: creditClassKeys.formOptions() });
       notify.success('Đã khóa tài khoản thành công');
     },
     onError: (error) => {

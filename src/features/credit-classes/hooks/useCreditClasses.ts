@@ -7,7 +7,7 @@ export const creditClassKeys = {
   all: ['creditClasses'] as const,
   lists: () => [...creditClassKeys.all, 'list'] as const,
   list: (filter: CreditClassFilter) => [...creditClassKeys.lists(), filter] as const,
-  giangVienOptions: () => [...creditClassKeys.all, 'giangVienOptions'] as const,
+  formOptions: () => [...creditClassKeys.all, 'formOptions'] as const,
 };
 
 export function useCreditClasses(filter: CreditClassFilter) {
@@ -18,11 +18,14 @@ export function useCreditClasses(filter: CreditClassFilter) {
   });
 }
 
-export function useGiangVienOptions() {
+export function useCreditClassFormOptions() {
   return useQuery({
-    queryKey: creditClassKeys.giangVienOptions(),
-    queryFn: () => creditClassService.getGiangVienOptions(),
-    staleTime: Infinity,
+    queryKey: creditClassKeys.formOptions(),
+    queryFn: () => creditClassService.getFormOptions(),
+    staleTime: 0,
+    gcTime: 5 * 60 * 1000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 

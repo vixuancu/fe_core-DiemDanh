@@ -1,21 +1,37 @@
-import type { ICreditClassService, GiangVienOption } from './credit-class.service';
-import type { LopTinChi, CreateLopTinChiDto, UpdateLopTinChiDto, CreditClassFilter } from '../types';
+import type { ICreditClassService } from './credit-class.service';
+import type {
+  CreditClassFilter,
+  CreditClassFormOptions,
+  CreateLopTinChiDto,
+  LopTinChi,
+  UpdateLopTinChiDto,
+} from '../types';
 import type { PaginatedResult } from '@/shared/types';
 
-// ─── Lấy giang vien từ data cũ (làm mock option) ────────────────────────────
-// Ta lấy tạm mockGiangVien vào đây, mockGiangVien.hoTen được dùng để gán tenGiangVien
-const MOCK_GIANG_VIEN = [
-  { id: '3', hoTen: 'Đỗ Duy Trình', trangThai: 'active' },
-  { id: '5', hoTen: 'Vũ Xuân Hạnh', trangThai: 'active' },
-  { id: '6', hoTen: 'Nguyễn Thị Lan', trangThai: 'active' },
-  { id: '7', hoTen: 'Trần Minh Quang', trangThai: 'locked' },
+const MOCK_COURSES = [
+  { id: '1', name: 'Khóa luận tốt nghiệp' },
+  { id: '2', name: 'Chuyên đề thực tập chuyên ngành' },
+  { id: '3', name: 'Trí tuệ nhân tạo' },
+  { id: '4', name: 'Lập trình web nâng cao' },
+];
+
+const MOCK_LECTURERS = [
+  { id: '3', name: 'Đỗ Duy Trình' },
+  { id: '5', name: 'Vũ Xuân Hạnh' },
+  { id: '6', name: 'Nguyễn Thị Lan' },
+];
+
+const MOCK_ROOMS = [
+  { id: '1', name: 'A1-101' },
+  { id: '2', name: 'A1-102' },
+  { id: '3', name: 'B2-201' },
 ];
 
 let STORE: LopTinChi[] = [
-  { id: '1', maLop: 'K23-7E1062.22-2.2526-1.1_LT', tenMonHoc: 'Khóa luận tốt nghiệp', giangVienId: '3', tenGiangVien: 'Đỗ Duy Trình', siSo: 35, hocKy: '2025-2026.2' },
-  { id: '2', maLop: 'K23-7E1061.22-2.2526-3.3_LT', tenMonHoc: 'Chuyên đề thực tập chuyên ngành', giangVienId: '5', tenGiangVien: 'Vũ Xuân Hạnh', siSo: 40, hocKy: '2025-2026.2' },
-  { id: '3', maLop: 'K23-7E1062.22-2.2526-2.1_LT', tenMonHoc: 'Trí tuệ nhân tạo', giangVienId: '3', tenGiangVien: 'Đỗ Duy Trình', siSo: 45, hocKy: '2025-2026.2' },
-  { id: '4', maLop: 'K23-7E1061.22-2.2526-4.2_LT', tenMonHoc: 'Lập trình web nâng cao', giangVienId: '6', tenGiangVien: 'Nguyễn Thị Lan', siSo: 50, hocKy: '2025-2026.2' },
+//   { id: '1', maLop: 'K23-7E1062.22-2.2526-1.1_LT', courseId: '1', tenMonHoc: 'Khóa luận tốt nghiệp', giangVienId: '3', tenGiangVien: 'Đỗ Duy Trình', roomId: '1', tenPhongHoc: 'A1-101', dayOfWeek: 2, startDate: '2025-08-20T00:00:00', endDate: '2026-01-05T00:00:00', startPeriod: 1, numberOfPeriods: 3, siSo: 35, hocKy: '2025-2026.2' },
+//   { id: '2', maLop: 'K23-7E1061.22-2.2526-3.3_LT', courseId: '2', tenMonHoc: 'Chuyên đề thực tập chuyên ngành', giangVienId: '5', tenGiangVien: 'Vũ Xuân Hạnh', roomId: '2', tenPhongHoc: 'A1-102', dayOfWeek: 3, startDate: '2025-08-22T00:00:00', endDate: '2026-01-05T00:00:00', startPeriod: 4, numberOfPeriods: 3, siSo: 40, hocKy: '2025-2026.2' },
+//   { id: '3', maLop: 'K23-7E1062.22-2.2526-2.1_LT', courseId: '3', tenMonHoc: 'Trí tuệ nhân tạo', giangVienId: '3', tenGiangVien: 'Đỗ Duy Trình', roomId: '3', tenPhongHoc: 'B2-201', dayOfWeek: 4, startDate: '2025-08-21T00:00:00', endDate: '2026-01-05T00:00:00', startPeriod: 7, numberOfPeriods: 3, siSo: 45, hocKy: '2025-2026.2' },
+//   { id: '4', maLop: 'K23-7E1061.22-2.2526-4.2_LT', courseId: '4', tenMonHoc: 'Lập trình web nâng cao', giangVienId: '6', tenGiangVien: 'Nguyễn Thị Lan', roomId: '2', tenPhongHoc: 'A1-102', dayOfWeek: 6, startDate: '2025-08-23T00:00:00', endDate: '2026-01-05T00:00:00', startPeriod: 1, numberOfPeriods: 3, siSo: 50, hocKy: '2025-2026.2' },
 ];
 
 let _nextId = 5;
@@ -41,19 +57,29 @@ export const creditClassMock: ICreditClassService = {
 
   async create(dto: CreateLopTinChiDto): Promise<LopTinChi> {
     await delay(400);
-    // Validate trùng lớp
     if (STORE.some((l) => l.maLop === dto.maLop)) {
       throw new Error(`Mã lớp tín chỉ "${dto.maLop}" đã tồn tại`);
     }
 
-    const gv = MOCK_GIANG_VIEN.find(g => g.id === dto.giangVienId);
-    if (!gv) throw new Error('Giảng viên không hợp lệ');
+    const lecturer = MOCK_LECTURERS.find((g) => g.id === dto.giangVienId);
+    if (!lecturer) throw new Error('Giảng viên không hợp lệ');
+
+    const course = MOCK_COURSES.find((c) => c.id === dto.courseId);
+    if (!course) throw new Error('Học phần không hợp lệ');
+
+    const room = MOCK_ROOMS.find((r) => r.id === dto.roomId);
+    if (!room) throw new Error('Phòng học không hợp lệ');
+
+    const semester = dto.startDate.slice(0, 4) + '-' + dto.endDate.slice(0, 4) + (new Date(dto.startDate).getMonth() + 1 <= 6 ? '.1' : '.2');
 
     const newClass: LopTinChi = {
       ...dto,
       id: String(_nextId++),
-      tenGiangVien: gv.hoTen,
-      siSo: 0, // Mặc định lớp mới tạo sĩ số 0
+      tenMonHoc: course.name,
+      tenGiangVien: lecturer.name,
+      tenPhongHoc: room.name,
+      siSo: 0,
+    //   hocKy: semester,
     };
     STORE.push(newClass);
     return { ...newClass };
@@ -66,11 +92,23 @@ export const creditClassMock: ICreditClassService = {
 
     let tenGiangVien = STORE[idx].tenGiangVien;
     if (dto.giangVienId) {
-       const gv = MOCK_GIANG_VIEN.find(g => g.id === dto.giangVienId);
-       if (gv) tenGiangVien = gv.hoTen;
+      const gv = MOCK_LECTURERS.find((g) => g.id === dto.giangVienId);
+      if (gv) tenGiangVien = gv.name;
     }
 
-    STORE[idx] = { ...STORE[idx], ...dto, tenGiangVien };
+    let tenMonHoc = STORE[idx].tenMonHoc;
+    if (dto.courseId) {
+      const course = MOCK_COURSES.find((c) => c.id === dto.courseId);
+      if (course) tenMonHoc = course.name;
+    }
+
+    let tenPhongHoc = STORE[idx].tenPhongHoc;
+    if (dto.roomId) {
+      const room = MOCK_ROOMS.find((r) => r.id === dto.roomId);
+      if (room) tenPhongHoc = room.name;
+    }
+
+    STORE[idx] = { ...STORE[idx], ...dto, tenGiangVien, tenMonHoc, tenPhongHoc };
     return { ...STORE[idx] };
   },
 
@@ -81,11 +119,12 @@ export const creditClassMock: ICreditClassService = {
     STORE.splice(idx, 1);
   },
 
-  async getGiangVienOptions(): Promise<GiangVienOption[]> {
+  async getFormOptions(): Promise<CreditClassFormOptions> {
     await delay(100);
-    return MOCK_GIANG_VIEN.filter(g => g.trangThai === 'active').map(g => ({
-      id: g.id,
-      hoTen: g.hoTen
-    }));
+    return {
+      courses: MOCK_COURSES,
+      lecturers: MOCK_LECTURERS,
+      rooms: MOCK_ROOMS,
+    };
   },
 };
