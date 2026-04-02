@@ -30,6 +30,74 @@ export function DataTablePagination({
     perPageOptions = [10, 20, 30, 40],
 }: DataTablePaginationProps) {
 
+    const didInitFromUrlRef = React.useRef(false);
+
+    const resolvePaginationFromUrl = React.useCallback(() => {
+        const params = new URLSearchParams(window.location.search);
+
+        const rawPerPage = Number(params.get("perPage"));
+        const nextPerPage = perPageOptions.includes(rawPerPage) ? rawPerPage : perPage;
+
+        const rawPage = Number(params.get("page"));
+        const normalizedPage = Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+        const maxPage = lastPage > 0 ? lastPage : 1;
+        const nextPage = Math.min(normalizedPage, maxPage);
+
+        return { nextPage, nextPerPage };
+    }, [lastPage, perPage, perPageOptions]);
+
+    const syncUrlParams = (page: number, nextPerPage: number, mode: "push" | "replace" = "push") => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("perPage", String(nextPerPage));
+
+        const nextUrl = `${url.pathname}?${url.searchParams.toString()}`;
+        if (mode === "replace") {
+            window.history.replaceState(window.history.state, "", nextUrl);
+            return;
+        }
+        window.history.pushState(window.history.state, "", nextUrl);
+    };
+
+    const handlePageChange = (page: number) => {
+        syncUrlParams(page, perPage);
+        onPageChange(page);
+    };
+
+    const handlePerPageChange = (nextPerPage: number) => {
+        syncUrlParams(1, nextPerPage, "push");
+        onPerPageChange(nextPerPage);
+        onPageChange(1);
+    };
+
+    React.useEffect(() => {
+        if (didInitFromUrlRef.current) return;
+        didInitFromUrlRef.current = true;
+
+        const { nextPage, nextPerPage } = resolvePaginationFromUrl();
+
+        if (nextPerPage !== perPage) {
+            onPerPageChange(nextPerPage);
+        }
+        if (nextPage !== currentPage) {
+            onPageChange(nextPage);
+        }
+
+        // Ensure URL is normalized on first load.
+        syncUrlParams(nextPage, nextPerPage, "replace");
+    }, [currentPage, onPageChange, onPerPageChange, perPage, resolvePaginationFromUrl]);
+
+    React.useEffect(() => {
+        const handlePopState = () => {
+            const { nextPage, nextPerPage } = resolvePaginationFromUrl();
+            onPerPageChange(nextPerPage);
+            onPageChange(nextPage);
+        };
+
+        window.addEventListener("popstate", handlePopState);
+        return () => window.removeEventListener("popstate", handlePopState);
+    }, [onPageChange, onPerPageChange, resolvePaginationFromUrl]);
+
     const getVisiblePages = () => {
         const pages: (number | string)[] = [];
         if (lastPage <= 5) {
@@ -56,8 +124,8 @@ export function DataTablePagination({
                     <span className="text-sm text-muted-foreground whitespace-nowrap">Hiển thị:</span>
                     <PortableSelect
                         value={perPage}
-                        onChange={(e) => onPerPageChange(Number(e.target.value))}
-                        className="h-8 w-[70px] text-xs"
+                        onChange={(e) => handlePerPageChange(Number(e.target.value))}
+                        className="h-8 w-[70px] text-xs rounded-lg"
                     >
                         {perPageOptions.map((n) => (
                             <option key={n} value={n}>{n}</option>
@@ -71,8 +139,8 @@ export function DataTablePagination({
                     <PaginationItem>
                         <PaginationPrevious
                             href="#"
-                            onClick={(e) => { e.preventDefault(); if (currentPage > 1) onPageChange(currentPage - 1); }}
-                            className={currentPage === 1 ? "pointer-events-none opacity-40" : "cursor-pointer"}
+                            onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                            className={currentPage === 1 ? "pointer-events-none opacity-40 rounded-lg" : "cursor-pointer rounded-lg"}
                         />
                     </PaginationItem>
 
@@ -84,8 +152,8 @@ export function DataTablePagination({
                                 <PaginationLink
                                     href="#"
                                     isActive={currentPage === p}
-                                    onClick={(e) => { e.preventDefault(); onPageChange(p as number); }}
-                                    className="cursor-pointer"
+                                    onClick={(e) => { e.preventDefault(); handlePageChange(p as number); }}
+                                    className="cursor-pointer rounded-lg"
                                 >
                                     {p}
                                 </PaginationLink>
@@ -96,8 +164,8 @@ export function DataTablePagination({
                     <PaginationItem>
                         <PaginationNext
                             href="#"
-                            onClick={(e) => { e.preventDefault(); if (currentPage < lastPage) onPageChange(currentPage + 1); }}
-                            className={currentPage === lastPage ? "pointer-events-none opacity-40" : "cursor-pointer"}
+                            onClick={(e) => { e.preventDefault(); if (currentPage < lastPage) handlePageChange(currentPage + 1); }}
+                            className={currentPage === lastPage ? "pointer-events-none opacity-40 rounded-lg" : "cursor-pointer rounded-lg"}
                         />
                     </PaginationItem>
                 </PaginationContent>
