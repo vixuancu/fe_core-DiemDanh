@@ -22,12 +22,17 @@ import { BaoCaoPage } from '@/app/components/bao-cao-page';
 import { CameraPage } from '@/app/components/camera-page';
 import { TaiKhoanPage } from '@/app/components/tai-khoan-page';
 import { DoiMatKhauPage } from '@/app/components/doi-mat-khau-page';
+import { DiemDanhAiDemoPage } from '@/app/components/diem-danh-ai-demo-page';
 
 export const router = createBrowserRouter([
   // Public routes
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/diem-danh-ai-demo',
+    element: <DiemDanhAiDemoPage />,
   },
 
   // Protected routes — cần đăng nhập
