@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router';
-import {
-  LayoutDashboard, GraduationCap, School, BookOpen, Building2, CalendarDays,
-  ScanFace, History, BarChart3, Camera, UserCog, LogOut, Menu, X,
-  ChevronDown, Bell, ClipboardCheck,
-} from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { roleLabels, type UserRole } from '@/shared/types';
+import {
+    BarChart3,
+    Bell,
+    BookOpen, BookOpenText, Building2, CalendarDays,
+    Camera,
+    ChevronDown,
+    ClipboardCheck,
+    GraduationCap,
+    History,
+    LayoutDashboard,
+    LogOut, Menu,
+    ScanFace,
+    School,
+    UserCog,
+    X,
+} from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router';
 
 // ─── Nav config ──────────────────────────────────────────────────────────────
 
@@ -17,9 +28,15 @@ interface NavItem {
   roles: UserRole[];
 }
 
+interface TabMeta {
+  title: string;
+  description?: string;
+}
+
 const NAV_ITEMS: NavItem[] = [
   { label: 'Tổng quan', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
   { label: 'Quản lý sinh viên', path: '/sinh-vien', icon: <GraduationCap className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
+  { label: 'Học phần', path: '/hoc-phan', icon: <BookOpenText className="w-5 h-5" />, roles: ['admin'] },
   { label: 'Lớp hành chính', path: '/lop-hanh-chinh', icon: <School className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
   { label: 'Lớp tín chỉ', path: '/lop-tin-chi', icon: <BookOpen className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
   { label: 'Phòng học', path: '/phong-hoc', icon: <Building2 className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
@@ -31,6 +48,58 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Quản lý camera', path: '/camera', icon: <Camera className="w-5 h-5" />, roles: ['admin'] },
   { label: 'Quản lý tài khoản', path: '/tai-khoan', icon: <UserCog className="w-5 h-5" />, roles: ['admin'] },
 ];
+
+const TAB_META: Record<string, TabMeta> = {
+  '/dashboard': {
+    title: 'Tổng quan'
+  },
+  '/sinh-vien': {
+    title: 'Quản lý sinh viên'
+  },
+  '/lop-hanh-chinh': {
+    title: 'Lớp hành chính'
+  },
+  '/lop-tin-chi': {
+    title: 'Lớp tín chỉ'
+  },
+  '/phong-hoc': {
+    title: 'Phòng học'
+  },
+  '/lich-hoc': {
+    title: 'Lịch dạy'
+  },
+  '/diem-danh': {
+    title: 'Điểm danh'
+  },
+  '/ket-qua-diem-danh': {
+    title: 'Kết quả điểm danh'
+  },
+  '/lich-su': {
+    title: 'Lịch sử điểm danh'
+  },
+  '/bao-cao': {
+    title: 'Báo cáo thống kê'
+  },
+  '/camera': {
+    title: 'Quản lý camera'
+  },
+  '/tai-khoan': {
+    title: 'Quản lý tài khoản'
+  },
+  '/doi-mat-khau': {
+    title: 'Đổi mật khẩu'
+  },
+};
+
+const APP_BREADCRUMB = 'Hệ thống điểm danh';
+
+function getTabMeta(pathname: string): TabMeta {
+  const exact = TAB_META[pathname];
+  if (exact) return exact;
+
+  const matchedPath = Object.keys(TAB_META).find((path) => pathname.startsWith(path));
+  return matchedPath ? TAB_META[matchedPath] : { title: 'Trang hiện tại' };
+}
 
 // ─── AppShell ───────────────────────────────────────────────────────────────
 
@@ -44,6 +113,7 @@ export function AppShell() {
   if (!user) return null;
 
   const filteredNav = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
+  const tabMeta = getTabMeta(location.pathname);
 
   const handleLogout = async () => {
     await logout();
@@ -98,13 +168,23 @@ export function AppShell() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-6 shrink-0">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-muted transition cursor-pointer"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-6 shrink-0 gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-lg hover:bg-muted transition cursor-pointer shrink-0"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
+            <div className="hidden md:flex min-w-0 flex-col justify-center">
+              <div className="flex items-center gap-2 min-w-0 text-sm text-muted-foreground">
+                <span className="truncate">{APP_BREADCRUMB}</span>
+                <span className="shrink-0">/</span>
+                <span className="truncate text-foreground font-medium">{tabMeta.title}</span>
+              </div>
+            </div>
+          </div>
 
           <div className="flex items-center gap-4">
             <button className="relative p-2 rounded-lg hover:bg-muted transition cursor-pointer">

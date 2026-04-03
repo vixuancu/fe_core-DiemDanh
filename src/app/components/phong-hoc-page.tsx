@@ -323,7 +323,7 @@ export function PhongHocPage() {
         <div>
             {/* Header */}
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <h2 className="text-xl font-bold text-gray-800">Quản lý phòng học & Camera thiết bị</h2>
+                <h2 className="text-xl font-bold text-gray-800">Quản lý phòng học</h2>
                 <button
                     onClick={handleAddNew}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer shadow-sm font-medium"
