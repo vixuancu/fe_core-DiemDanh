@@ -541,11 +541,12 @@ export function DiemDanhAiDemoPage() {
         ...prev,
         recognized: recognizedCount,
         lastElapsedMs: Number(data.elapsed_ms ?? 0),
-        lastReason: recognizedCount > 0 ? 'matched' : (firstUnrecognized?.debug?.reason || 'unmatched'),
+        // lastReason: recognizedCount > 0 ? 'matched' : (firstUnrecognized?.debug?.reason || 'unmatched'),
+        lastReason: recognizedCount > 0 ? 'matched' : 'unmatched',
       }));
 
       setConnectionState('active');
-      setConnectionText('Webcam dang nhan dien');
+      setConnectionText('Webcam đang nhận diện');
       addLog(`Webcam: faces=${data.total_faces}, attended=${data.total_attended}, elapsed=${data.elapsed_ms ?? 0}ms`);
     } catch (error) {
       setDebugStats((prev) => ({ ...prev, lastReason: 'recognize_exception' }));
@@ -706,7 +707,7 @@ export function DiemDanhAiDemoPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl">Demo AI Điểm Danh (ẩn)</h2>
+        <h2 className="text-xl">Demo AI Điểm Danh</h2>
         <div className="text-xs text-muted-foreground">Path: /diem-danh-ai-demo</div>
       </div>
 
@@ -792,18 +793,18 @@ export function DiemDanhAiDemoPage() {
             <img
               ref={streamImgRef}
               alt="RTSP stream"
-              className={`absolute inset-0 w-full h-full object-contain ${runtimeMode === 'ip_camera' ? 'block' : 'hidden'}`}
+              className={`absolute inset-0 w-full h-full object-contain ${runtimeMode === 'ip_camera' ? 'block' : 'hidden'} [transform:scaleX(-1)]`}
             />
             <video
               ref={webcamVideoRef}
               autoPlay
               muted
               playsInline
-              className={`absolute inset-0 w-full h-full object-contain ${runtimeMode === 'webcam' ? 'block' : 'hidden'}`}
+              className={`absolute inset-0 w-full h-full object-contain ${runtimeMode === 'webcam' ? 'block' : 'hidden'} [transform:scaleX(-1)]`}
             />
             <canvas ref={captureCanvasRef} className="hidden" />
 
-            <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 pointer-events-none [transform:scaleX(-1)]">
               {drawBoxes.map((box) => (
                 <div
                   key={box.id}
@@ -825,7 +826,7 @@ export function DiemDanhAiDemoPage() {
                     height: `${box.height}px`,
                   }}
                 >
-                  <div className="absolute -top-6 left-0 px-2 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium whitespace-nowrap">
+                  <div className="absolute -top-6 left-0 px-2 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium whitespace-nowrap [transform:scaleX(-1)]">
                     {box.label}
                   </div>
                 </div>
@@ -876,7 +877,7 @@ export function DiemDanhAiDemoPage() {
                     <div className="text-xs text-muted-foreground">{row.studentCode}</div>
                   </div>
                   <div className="text-right">
-                    <div>{row.confidence}%</div>
+                    {/* <div>{row.confidence}%</div> */}
                     <div className="text-xs text-muted-foreground">{row.at}</div>
                   </div>
                 </div>
