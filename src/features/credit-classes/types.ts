@@ -72,3 +72,17 @@ export interface CreditClassStudentFilter {
   page?: number;
   perPage?: number;
 }
+
+export interface CreditClassStudentImportErrorItem {
+  row: number;
+  field: string;
+  studentCode?: string;
+  message: string;
+}
+
+export interface CreditClassStudentImportResult {
+  totalRows: number;
+  importedCount: number;
+  failedCount: number;
+  errors: CreditClassStudentImportErrorItem[];
+}

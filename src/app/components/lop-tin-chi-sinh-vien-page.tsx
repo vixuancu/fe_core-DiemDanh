@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
-import { ChevronLeft, Loader2, MoreVertical, Search, UserPlus, X } from 'lucide-react';
+import { ChevronLeft, Download, Loader2, MoreVertical, Search, Upload, UserPlus, X } from 'lucide-react';
 import {
   useAddStudentToCreditClass,
   useCreditClasses,
   useCreditClassStudents,
+  useImportStudentsToCreditClass,
   useRemoveStudentFromCreditClass,
+  downloadCreditClassStudentImportTemplate,
 } from '@/features/credit-classes/hooks/useCreditClasses';
 import { useStudents } from '@/features/students/hooks/useStudents';
+import type { CreditClassStudentImportResult } from '@/features/credit-classes/types';
 import type { CreditClassStudent } from '@/features/credit-classes/types';
 import type { SinhVien } from '@/features/students/types';
 import { DataTablePagination } from './ui/data-table-pagination';
@@ -18,6 +21,131 @@ type LopTinChiPageState = {
 };
 
 type StudentOption = Pick<SinhVien, 'id' | 'maSV' | 'hoTen' | 'lopHanhChinh'>;
+
+function ImportStudentsExcelModal({
+  isOpen,
+  importFile,
+  importError,
+  importResult,
+  isSubmitting,
+  isDownloadingTemplate,
+  onClose,
+  onFileChange,
+  onSubmit,
+  onDownloadTemplate,
+}: {
+  isOpen: boolean;
+  importFile: File | null;
+  importError: string;
+  importResult: CreditClassStudentImportResult | null;
+  isSubmitting: boolean;
+  isDownloadingTemplate: boolean;
+  onClose: () => void;
+  onFileChange: (file: File | null) => void;
+  onSubmit: () => void;
+  onDownloadTemplate: () => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl w-full max-w-lg p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between mb-5">
+          <h3>Nhập sinh viên từ Excel</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="p-1 rounded hover:bg-muted transition cursor-pointer disabled:opacity-60"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-1 text-sm">File mẫu</label>
+            <button
+              type="button"
+              onClick={onDownloadTemplate}
+              disabled={isDownloadingTemplate || isSubmitting}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white text-sm hover:bg-muted transition cursor-pointer disabled:opacity-60"
+            >
+              {isDownloadingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Tải file mẫu (.xlsx)
+            </button>
+          </div>
+
+          <div>
+            <label className="block mb-1 text-sm">Chọn file Excel</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx"
+              onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+              className="hidden"
+            />
+            <div className="flex items-center gap-2">
+              <input
+                value={importFile?.name ?? ''}
+                disabled
+                placeholder="Chưa chọn file"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-muted/40 text-sm text-muted-foreground cursor-not-allowed"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting}
+                className="shrink-0 px-3 py-2 rounded-lg border border-border bg-white text-sm hover:bg-muted transition cursor-pointer disabled:opacity-60"
+              >
+                Chọn file
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Chỉ hỗ trợ định dạng .xlsx</p>
+          </div>
+
+          {importError && <p className="text-sm text-red-600">{importError}</p>}
+
+          {importResult && (
+            <div className="rounded-lg border border-border p-3 bg-muted/20 space-y-2">
+              {importResult.errors.length > 0 && (
+                <div className="max-h-40 overflow-y-auto border border-border rounded p-2 bg-white">
+                  {importResult.errors.slice(0, 20).map((err, idx) => (
+                    <p key={`${err.row}-${idx}`} className="text-xs text-red-700">
+                      Dòng {err.row}: {err.message}{err.studentCode ? ` (${err.studentCode})` : ''}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted cursor-pointer"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={!importFile || isSubmitting}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {isSubmitting ? 'Đang thêm...' : 'Thêm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddStudentModal({
   isOpen,
@@ -280,6 +408,11 @@ export function LopTinChiSinhVienPage() {
   const { lopTinChiId } = useParams();
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importError, setImportError] = useState('');
+  const [importResult, setImportResult] = useState<CreditClassStudentImportResult | null>(null);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const addStudentLockRef = useRef(false);
@@ -317,6 +450,7 @@ export function LopTinChiSinhVienPage() {
 
   const { mutate: addStudentToCreditClass, isPending: isAddingStudent } = useAddStudentToCreditClass();
   const { mutate: removeStudentFromCreditClass, isPending: isRemovingStudent } = useRemoveStudentFromCreditClass();
+  const importMutation = useImportStudentsToCreditClass(lopTinChiId ?? '');
 
   const enrolledStudents = enrolledStudentsData?.data ?? [];
 
@@ -355,6 +489,41 @@ export function LopTinChiSinhVienPage() {
 
   const isTableLoading = isLoadingEnrolledStudents || isRemovingStudent;
 
+  const handleDownloadTemplate = async () => {
+    if (!lopTinChiId) return;
+    try {
+      setIsDownloadingTemplate(true);
+      await downloadCreditClassStudentImportTemplate(lopTinChiId);
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
+
+  const handleImportStudents = () => {
+    if (!lopTinChiId) return;
+    if (!importFile) {
+      setImportError('Vui lòng chọn file Excel trước khi import');
+      return;
+    }
+
+    const lowerName = importFile.name.toLowerCase();
+    if (!lowerName.endsWith('.xlsx')) {
+      setImportError('Chỉ chấp nhận file Excel .xlsx');
+      return;
+    }
+
+    setImportError('');
+    importMutation.mutate(importFile, {
+      onSuccess: (result) => {
+        setImportResult(result);
+        if (result.failedCount === 0) {
+          setIsImportModalOpen(false);
+          setImportFile(null);
+        }
+      },
+    });
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
@@ -376,16 +545,32 @@ export function LopTinChiSinhVienPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsAddModalOpen(true)}
-          disabled={addableStudents.length === 0 || isLoadingStudents || isAddingStudent}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-          title={addableStudents.length === 0 ? 'Không còn sinh viên để thêm' : 'Thêm sinh viên vào lớp'}
-        >
-          <UserPlus className="w-4 h-4" />
-          Thêm sinh viên
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setImportError('');
+              setImportResult(null);
+              setImportFile(null);
+              setIsImportModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-white text-sm hover:bg-muted transition cursor-pointer"
+          >
+            <Upload className="w-4 h-4" />
+            Nhập Excel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            disabled={addableStudents.length === 0 || isLoadingStudents || isAddingStudent}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            title={addableStudents.length === 0 ? 'Không còn sinh viên để thêm' : 'Thêm sinh viên vào lớp'}
+          >
+            <UserPlus className="w-4 h-4" />
+            Thêm sinh viên
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -474,6 +659,23 @@ export function LopTinChiSinhVienPage() {
         isSubmitting={isAddingStudent}
         onClose={() => setIsAddModalOpen(false)}
         onConfirm={handleAddStudent}
+      />
+
+      <ImportStudentsExcelModal
+        isOpen={isImportModalOpen}
+        importFile={importFile}
+        importError={importError}
+        importResult={importResult}
+        isSubmitting={importMutation.isPending}
+        isDownloadingTemplate={isDownloadingTemplate}
+        onClose={() => setIsImportModalOpen(false)}
+        onFileChange={(file) => {
+          setImportFile(file);
+          setImportError('');
+          setImportResult(null);
+        }}
+        onSubmit={handleImportStudents}
+        onDownloadTemplate={handleDownloadTemplate}
       />
     </div>
   );

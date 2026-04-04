@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { creditClassService } from '../services';
 import type {
+  CreditClassStudentImportResult,
   CreditClassFilter,
   CreditClassStudentFilter,
   CreateLopTinChiDto,
@@ -127,4 +128,40 @@ export function useRemoveStudentFromCreditClass() {
       notify.error(message);
     },
   });
+}
+
+export function useImportStudentsToCreditClass(sectionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => creditClassService.importStudentsFromExcel(sectionId, file),
+    onSuccess: (result: CreditClassStudentImportResult) => {
+      queryClient.invalidateQueries({
+        queryKey: [...creditClassKeys.all, 'students', sectionId],
+      });
+      queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
+
+      if (result.failedCount > 0) {
+        // notify.warning(`Đã import ${result.importedCount}/${result.totalRows} sinh viên`);
+        notify.error(`Thêm sinh viên thất bại`);
+      } else {
+        notify.success(`Import thành công ${result.importedCount} sinh viên`);
+      }
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Import sinh viên thất bại';
+      notify.error(message);
+    },
+  });
+}
+
+export async function downloadCreditClassStudentImportTemplate(sectionId: string) {
+  const blob = await creditClassService.downloadStudentImportTemplate(sectionId);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'credit_class_student_import_template.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

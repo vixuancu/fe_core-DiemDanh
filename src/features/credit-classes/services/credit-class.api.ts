@@ -1,8 +1,9 @@
 import { config } from '@/shared/config/env';
-import { getAuthHeaders } from '@/features/auth/session';
+import { forceLogout, getAuthHeaders } from '@/features/auth/session';
 import { parseEnvelope, parseListEnvelope } from '@/shared/model/api-error.model';
 import type { ICreditClassService } from './credit-class.service';
 import type {
+  CreditClassStudentImportResult,
   CreditClassStudent,
   CreditClassStudentFilter,
   CreditClassFilter,
@@ -53,6 +54,29 @@ interface CourseSectionStudentResponse {
   administrative_class_name?: string | null;
 }
 
+interface BackendImportError {
+  row: number;
+  field: string;
+  student_code?: string | null;
+  message: string;
+}
+
+interface BackendImportResult {
+  total_rows: number;
+  imported_count: number;
+  failed_count: number;
+  errors: BackendImportError[];
+}
+
+class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 function mapCourseSection(item: CourseSectionResponse): LopTinChi {
   return {
     id: String(item.id),
@@ -81,6 +105,20 @@ function mapCourseSectionStudent(item: CourseSectionStudentResponse): CreditClas
     maSV: item.student_code,
     hoTen: item.full_name,
     lopHanhChinh: item.administrative_class_name || 'Chưa phân lớp',
+  };
+}
+
+function mapImportResult(item: BackendImportResult): CreditClassStudentImportResult {
+  return {
+    totalRows: item.total_rows,
+    importedCount: item.imported_count,
+    failedCount: item.failed_count,
+    errors: item.errors.map((error) => ({
+      row: error.row,
+      field: error.field,
+      studentCode: error.student_code || undefined,
+      message: error.message,
+    })),
   };
 }
 
@@ -214,5 +252,36 @@ export const creditClassApi: ICreditClassService = {
       headers: getAuthHeaders(),
     });
     await parseEnvelope<void>(res);
+  },
+
+  async importStudentsFromExcel(sectionId: string, file: File): Promise<CreditClassStudentImportResult> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    const res = await fetch(`${API_URL}/${sectionId}/students/import`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    const payload = await parseEnvelope<BackendImportResult>(res);
+    return mapImportResult(payload.data);
+  },
+
+  async downloadStudentImportTemplate(sectionId: string): Promise<Blob> {
+    const res = await fetch(`${API_URL}/${sectionId}/students/import/template`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (res.status === 401) {
+      forceLogout();
+      throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+    }
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { message?: string };
+      throw new ApiError(payload.message || 'Tải file mẫu thất bại', res.status);
+    }
+
+    return await res.blob();
   },
 };

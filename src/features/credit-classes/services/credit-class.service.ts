@@ -1,4 +1,5 @@
 import type {
+  CreditClassStudentImportResult,
   CreditClassStudent,
   CreditClassStudentFilter,
   CreditClassFormOptions,
@@ -17,4 +18,6 @@ export interface ICreditClassService {
   listStudents(sectionId: string, filter: CreditClassStudentFilter): Promise<PaginatedResult<CreditClassStudent>>;
   addStudent(sectionId: string, studentId: string): Promise<CreditClassStudent>;
   removeStudent(sectionId: string, studentId: string): Promise<void>;
+  importStudentsFromExcel(sectionId: string, file: File): Promise<CreditClassStudentImportResult>;
+  downloadStudentImportTemplate(sectionId: string): Promise<Blob>;
 }
