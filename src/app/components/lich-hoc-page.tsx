@@ -213,6 +213,7 @@ export function LichHocPage() {
   const { user } = useAuth();
   const isAdminOrVu = user?.role === 'admin' || user?.role === 'giao_vu';
   const isGiangVien = user?.role === 'giang_vien';
+  const forceScheduleMock = import.meta.env.VITE_FORCE_SCHEDULE_MOCK === 'true';
 
   const weeksList = useMemo(() => generateWeeksList(), []);
   
@@ -238,7 +239,7 @@ export function LichHocPage() {
 
   const [showModal, setShowModal] = useState(false);
 
-  const giangVienIdFilter = isGiangVien ? user.id : undefined;
+  const giangVienIdFilter = isGiangVien && !forceScheduleMock ? user.id : undefined;
 
   const { data, isLoading: isSchedulesLoading, isError, error } = useSchedules({
     tuNgay,
@@ -251,7 +252,10 @@ export function LichHocPage() {
   const isLoading = isSchedulesLoading || isOptionsLoading;
 
   const { mutate: deleteSchedule } = useDeleteSchedule();
-  const schedules = data?.data ?? [];
+  const schedulesRaw = data?.data ?? [];
+  const schedules = isGiangVien && forceScheduleMock
+    ? schedulesRaw.filter((item) => item.tenGiangVien === user?.hoTen)
+    : schedulesRaw;
 
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Xóa lịch dạy môn "${name}"? Các điểm danh thuộc lịch này cũng bị mất.`)) {
