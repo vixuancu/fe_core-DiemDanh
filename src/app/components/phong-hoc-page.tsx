@@ -6,23 +6,11 @@ import {
     Loader2,
     MoreVertical,
     Camera,
-    CameraOff,
-    AlertCircle
+    CameraOff
 } from 'lucide-react';
 import { useClassrooms, useCreateClassroom, useUpdateClassroom, useDeleteClassroom } from '@/features/classrooms/hooks/useClassrooms';
 import { DataTablePagination } from './ui/data-table-pagination';
 import { ClassroomCreateRequest } from '@/features/classrooms/types';
-
-// ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
-
-function ErrorState({ message }: { message: string }) {
-    return (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 mb-4">
-            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
-            <p className="text-sm text-red-700">{message}</p>
-        </div>
-    );
-}
 
 // ─── COMPONENT DROPDOWN TÙY CHỈNH ──────────────────────────────────────────
 function ActionDropdown({ room, onDeleteClick, onEditClick }: { room: any; onDeleteClick: (room: any) => void, onEditClick: (room: any) => void }) {
@@ -116,32 +104,27 @@ function ClassroomModal({
 }) {
     const isEdit = !!initialData;
     const [className, setClassName] = useState(initialData?.className || '');
-    const [formError, setFormError] = useState('');
 
     const { mutate: create, isPending: isCreating } = useCreateClassroom();
     const { mutate: update, isPending: isUpdating } = useUpdateClassroom();
 
     const isPending = isCreating || isUpdating;
+    const isFormValid = className.trim() !== '';
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!className.trim()) {
-            setFormError('Vui lòng nhập tên lớp học');
-            return;
-        }
+        if (!isFormValid) return;
 
         const payload: ClassroomCreateRequest = { class_name: className.trim() };
 
         if (isEdit) {
             update({ id: Number(initialData.id), request: payload }, {
                 onSuccess: () => onClose(),
-                onError: (err: any) => setFormError(err.message),
             });
         } else {
             create(payload, {
                 onSuccess: () => onClose(),
-                onError: (err: any) => setFormError(err.message),
             });
         }
     };
@@ -164,8 +147,6 @@ function ClassroomModal({
                         <X className="w-5 h-5 text-gray-500" />
                     </button>
                 </div>
-
-                {formError && <ErrorState message={formError} />}
 
                 <div className="space-y-4">
                     <div>
@@ -193,11 +174,13 @@ function ClassroomModal({
                     </button>
                     <button
                         type="submit"
-                        disabled={isPending}
-                        className="px-5 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] text-sm font-semibold shadow-lg flex items-center gap-2 cursor-pointer disabled:bg-gray-400"
+                        disabled={!isFormValid || isPending}
+                        className={`px-5 py-2 rounded-lg text-white text-sm font-semibold shadow-lg transition ${(!isFormValid || isPending)
+                            ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                            : 'bg-[#009dd9] hover:bg-[#0088be] cursor-pointer'
+                            }`}
                     >
-                        {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {isEdit ? 'Cập nhật' : 'Tạo lớp học'}
+                        {isCreating || isUpdating ? 'Đang lưu...' : 'Thêm lớp học'}
                     </button>
                 </div>
             </form>
