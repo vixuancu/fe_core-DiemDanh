@@ -62,6 +62,9 @@ const TAB_META: Record<string, TabMeta> = {
   '/lop-tin-chi': {
     title: 'Lớp tín chỉ'
   },
+  '/lop-tin-chi/:lopTinChiId/sinh-vien': {
+    title: 'Danh sách sinh viên'
+  },
   '/phong-hoc': {
     title: 'Phòng học'
   },
@@ -94,6 +97,10 @@ const TAB_META: Record<string, TabMeta> = {
 const APP_BREADCRUMB = 'Hệ thống điểm danh';
 
 function getTabMeta(pathname: string): TabMeta {
+  if (/^\/lop-tin-chi\/[^/]+\/sinh-vien$/.test(pathname)) {
+    return { title: 'Chi tiết danh sách sinh viên' };
+  }
+
   const exact = TAB_META[pathname];
   if (exact) return exact;
 
@@ -114,6 +121,7 @@ export function AppShell() {
 
   const filteredNav = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
   const tabMeta = getTabMeta(location.pathname);
+  const isCreditClassStudentDetail = /^\/lop-tin-chi\/[^/]+\/sinh-vien$/.test(location.pathname);
 
   const handleLogout = async () => {
     await logout();
@@ -179,9 +187,21 @@ export function AppShell() {
 
             <div className="hidden md:flex min-w-0 flex-col justify-center">
               <div className="flex items-center gap-2 min-w-0 text-sm text-muted-foreground">
-                <span className="truncate">{APP_BREADCRUMB}</span>
-                <span className="shrink-0">/</span>
-                <span className="truncate text-foreground font-medium">{tabMeta.title}</span>
+                {isCreditClassStudentDetail ? (
+                  <>
+                    <span className="truncate">{APP_BREADCRUMB}</span>
+                    <span className="shrink-0">/</span>
+                    <span className="truncate">Lớp tín chỉ</span>
+                    <span className="shrink-0">/</span>
+                    <span className="truncate text-foreground font-medium">{tabMeta.title}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="truncate">{APP_BREADCRUMB}</span>
+                    <span className="shrink-0">/</span>
+                    <span className="truncate text-foreground font-medium">{tabMeta.title}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -3,6 +3,8 @@ import { getAuthHeaders } from '@/features/auth/session';
 import { parseEnvelope, parseListEnvelope } from '@/shared/model/api-error.model';
 import type { ICreditClassService } from './credit-class.service';
 import type {
+  CreditClassStudent,
+  CreditClassStudentFilter,
   CreditClassFilter,
   CreditClassFormOptions,
   CreateLopTinChiDto,
@@ -44,6 +46,13 @@ interface CourseSectionFormOptionsResponse {
   rooms: CourseSectionOptionResponse[];
 }
 
+interface CourseSectionStudentResponse {
+  id: number;
+  student_code: string;
+  full_name: string;
+  administrative_class_name?: string | null;
+}
+
 function mapCourseSection(item: CourseSectionResponse): LopTinChi {
   return {
     id: String(item.id),
@@ -63,6 +72,15 @@ function mapCourseSection(item: CourseSectionResponse): LopTinChi {
     endTime: item.end_time,
     siSo: item.si_so,
     // hocKy: item.hoc_ky,
+  };
+}
+
+function mapCourseSectionStudent(item: CourseSectionStudentResponse): CreditClassStudent {
+  return {
+    id: String(item.id),
+    maSV: item.student_code,
+    hoTen: item.full_name,
+    lopHanhChinh: item.administrative_class_name || 'Chưa phân lớp',
   };
 }
 
@@ -158,5 +176,43 @@ export const creditClassApi: ICreditClassService = {
       lecturers: payload.data.lecturers.map((item) => ({ id: String(item.id), name: item.name })),
       rooms: payload.data.rooms.map((item) => ({ id: String(item.id), name: item.name })),
     };
+  },
+
+  async listStudents(sectionId: string, filter: CreditClassStudentFilter): Promise<PaginatedResult<CreditClassStudent>> {
+    const params = new URLSearchParams();
+    if (filter.search) params.set('search', filter.search);
+    params.set('page', String(filter.page ?? 1));
+    params.set('page_size', String(filter.perPage ?? 10));
+
+    const res = await fetch(`${API_URL}/${sectionId}/students?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const payload = await parseListEnvelope<CourseSectionStudentResponse>(res);
+
+    return {
+      data: payload.data.map(mapCourseSectionStudent),
+      total: payload.total,
+      page: payload.page,
+      perPage: payload.page_size,
+      totalPages: payload.total_pages,
+    };
+  },
+
+  async addStudent(sectionId: string, studentId: string): Promise<CreditClassStudent> {
+    const res = await fetch(`${API_URL}/${sectionId}/students`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ student_id: Number(studentId) }),
+    });
+    const payload = await parseEnvelope<CourseSectionStudentResponse>(res);
+    return mapCourseSectionStudent(payload.data);
+  },
+
+  async removeStudent(sectionId: string, studentId: string): Promise<void> {
+    const res = await fetch(`${API_URL}/${sectionId}/students/${studentId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    await parseEnvelope<void>(res);
   },
 };

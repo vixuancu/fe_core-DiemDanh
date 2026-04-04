@@ -59,3 +59,16 @@ export interface CreditClassFilter {
   page?: number;
   perPage?: number;
 }
+
+export interface CreditClassStudent {
+  id: string;
+  maSV: string;
+  hoTen: string;
+  lopHanhChinh: string;
+}
+
+export interface CreditClassStudentFilter {
+  search?: string;
+  page?: number;
+  perPage?: number;
+}

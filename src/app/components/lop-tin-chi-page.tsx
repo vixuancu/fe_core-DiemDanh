@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   useCreditClasses,
   useCreditClassFormOptions,
@@ -7,8 +8,7 @@ import {
   useDeleteCreditClass,
 } from '@/features/credit-classes/hooks/useCreditClasses';
 import type { CreateLopTinChiDto, LopTinChi } from '@/features/credit-classes/types';
-import { mockSinhVien } from './data'; 
-import { Search, Plus, MoreVertical, X, UserPlus, UserMinus, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Search, Plus, MoreVertical, Loader2, AlertCircle, AlertTriangle, X } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
 
 // ─── Error State ──────────────────────────────────────────────────────────────
@@ -429,6 +429,7 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function LopTinChiPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingClass, setEditingClass] = useState<LopTinChi | null>(null);
@@ -436,7 +437,6 @@ export function LopTinChiPage() {
     isOpen: false,
     lop: null,
   });
-  const [showStudents, setShowStudents] = useState<{ id: string, name: string, code: string } | null>(null);
 
   const { data, isLoading, isError, error } = useCreditClasses({ search, perPage: 100 }); 
   const { mutate: deleteClass, isPending: isDeleting } = useDeleteCreditClass();
@@ -537,7 +537,9 @@ export function LopTinChiPage() {
                         onEditClick={openEditModal}
                         onDeleteClick={(target) => handleDelete(target)}
                         onOpenStudents={(target) =>
-                          setShowStudents({ id: target.id, name: target.tenMonHoc, code: target.maLop })
+                          navigate(`/lop-tin-chi/${target.id}/sinh-vien`, {
+                            state: { name: target.tenMonHoc, code: target.maLop },
+                          })
                         }
                       />
                     </td>
@@ -592,55 +594,6 @@ export function LopTinChiPage() {
               >
                 {isDeleting ? 'Đang xóa...' : 'Xóa'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal danh sách SV */}
-      {showStudents && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl p-6 max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between mb-4 shrink-0">
-              <div>
-                <h3>Danh sách sinh viên</h3>
-                <p className="text-sm text-muted-foreground">{showStudents.name} - {showStudents.code}</p>
-              </div>
-              <button onClick={() => setShowStudents(null)} className="p-1 rounded hover:bg-muted cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="flex items-center justify-between mb-4 shrink-0">
-              <p className="text-sm text-muted-foreground">Tổng: {mockSinhVien.length} sinh viên</p>
-              <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] cursor-pointer">
-                <UserPlus className="w-4 h-4" /> Thêm sinh viên
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 min-h-[300px]">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border sticky top-0 bg-white">
-                    <th className="text-left py-2 px-3 font-normal text-muted-foreground">STT</th>
-                    <th className="text-left py-2 px-3 font-normal text-muted-foreground">Mã SV</th>
-                    <th className="text-left py-2 px-3 font-normal text-muted-foreground">Họ tên</th>
-                    <th className="text-left py-2 px-3 font-normal text-muted-foreground">Lớp danh nghĩa</th>
-                    <th className="text-left py-2 px-3 font-normal text-muted-foreground">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockSinhVien.slice(0, 5).map((sv, i) => (
-                    <tr key={sv.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                      <td className="py-2 px-3">{i + 1}</td>
-                      <td className="py-2 px-3">{sv.maSV}</td>
-                      <td className="py-2 px-3">{sv.hoTen}</td>
-                      <td className="py-2 px-3">{sv.lop}</td>
-                      <td className="py-2 px-3">
-                        <button className="p-1.5 rounded hover:bg-red-50 cursor-pointer" title="Xóa khỏi lớp">
-                          <UserMinus className="w-4 h-4 text-red-500" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         </div>

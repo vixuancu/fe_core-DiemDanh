@@ -11,7 +11,7 @@ const API_URL = `${config.apiBaseUrl}/courses`;
 function mapCourse(item: CourseResponse): Course {
   return {
     id: Number(item.id),
-    courseName: item.course_name?.trim(),
+    courseName: item.course_name,
     isCancel: item.is_cancel,
     createdAt: formatDateTime(item.created_at),
     updatedAt: formatDateTime(item.updated_at),

@@ -1,4 +1,6 @@
 import type {
+  CreditClassStudent,
+  CreditClassStudentFilter,
   CreditClassFormOptions,
   LopTinChi,
   CreateLopTinChiDto,
@@ -12,4 +14,7 @@ export interface ICreditClassService {
   update(id: string, dto: UpdateLopTinChiDto): Promise<LopTinChi>;
   delete(id: string): Promise<void>;
   getFormOptions(): Promise<CreditClassFormOptions>;
+  listStudents(sectionId: string, filter: CreditClassStudentFilter): Promise<PaginatedResult<CreditClassStudent>>;
+  addStudent(sectionId: string, studentId: string): Promise<CreditClassStudent>;
+  removeStudent(sectionId: string, studentId: string): Promise<void>;
 }

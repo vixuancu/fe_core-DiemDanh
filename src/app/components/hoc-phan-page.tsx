@@ -330,7 +330,7 @@ export function HocPhanPage() {
                 currentData.map((course, index) => (
                   <tr key={course.id} className="border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors">
                     <td className="py-3.5 px-4 text-gray-600 font-normal">{(currentPage - 1) * perPage + index + 1}</td>
-                    <td className="py-3.5 px-4 font-normal text-gray-900">{course.courseName}</td>
+                    <td className="py-3.5 px-4 font-normal text-gray-900 whitespace-pre-wrap">{course.courseName}</td>
                     <td className="py-3.5 px-4 text-gray-500 font-normal">{course.createdAt}</td>
                     <td className="py-3.5 px-4 text-center font-normal">
                       <ActionDropdown

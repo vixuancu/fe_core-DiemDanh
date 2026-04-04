@@ -1,5 +1,7 @@
 import type { ICreditClassService } from './credit-class.service';
 import type {
+  CreditClassStudent,
+  CreditClassStudentFilter,
   CreditClassFilter,
   CreditClassFormOptions,
   CreateLopTinChiDto,
@@ -7,6 +9,7 @@ import type {
   UpdateLopTinChiDto,
 } from '../types';
 import type { PaginatedResult } from '@/shared/types';
+import { mockSinhVien } from '@/app/components/data';
 
 const MOCK_COURSES = [
   { id: '1', name: 'Khóa luận tốt nghiệp' },
@@ -36,6 +39,11 @@ let STORE: LopTinChi[] = [
 
 let _nextId = 5;
 const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+const ENROLLMENTS: Record<string, string[]> = {
+  '1': ['1', '2', '3'],
+  '2': ['4', '5'],
+  '3': ['6', '7', '8'],
+};
 
 export const creditClassMock: ICreditClassService = {
   async list({ search = '', page = 1, perPage = 10 }: CreditClassFilter): Promise<PaginatedResult<LopTinChi>> {
@@ -126,5 +134,58 @@ export const creditClassMock: ICreditClassService = {
       lecturers: MOCK_LECTURERS,
       rooms: MOCK_ROOMS,
     };
+  },
+
+  async listStudents(sectionId: string, filter: CreditClassStudentFilter): Promise<PaginatedResult<CreditClassStudent>> {
+    await delay(150);
+    const enrolledIds = ENROLLMENTS[sectionId] ?? [];
+    const keyword = (filter.search ?? '').trim().toLowerCase();
+    const page = filter.page ?? 1;
+    const perPage = filter.perPage ?? 10;
+
+    const filtered = mockSinhVien
+      .filter((sv) => enrolledIds.includes(sv.id))
+      .filter((sv) => {
+        if (!keyword) return true;
+        return [sv.maSV, sv.hoTen, sv.lop].join(' ').toLowerCase().includes(keyword);
+      })
+      .map((sv) => ({
+        id: sv.id,
+        maSV: sv.maSV,
+        hoTen: sv.hoTen,
+        lopHanhChinh: sv.lop,
+      }));
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    const data = filtered.slice((safePage - 1) * perPage, safePage * perPage);
+
+    return { data, total, page: safePage, perPage, totalPages };
+  },
+
+  async addStudent(sectionId: string, studentId: string): Promise<CreditClassStudent> {
+    await delay(150);
+    const student = mockSinhVien.find((sv) => sv.id === studentId);
+    if (!student) {
+      throw new Error('Không tìm thấy sinh viên');
+    }
+
+    ENROLLMENTS[sectionId] = ENROLLMENTS[sectionId] ?? [];
+    if (!ENROLLMENTS[sectionId].includes(studentId)) {
+      ENROLLMENTS[sectionId].push(studentId);
+    }
+
+    return {
+      id: student.id,
+      maSV: student.maSV,
+      hoTen: student.hoTen,
+      lopHanhChinh: student.lop,
+    };
+  },
+
+  async removeStudent(sectionId: string, studentId: string): Promise<void> {
+    await delay(150);
+    ENROLLMENTS[sectionId] = (ENROLLMENTS[sectionId] ?? []).filter((id) => id !== studentId);
   },
 };
