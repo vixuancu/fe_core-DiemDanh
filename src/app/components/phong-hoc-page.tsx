@@ -270,6 +270,7 @@ function DeleteConfirmationModal({
 
 export function PhongHocPage() {
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; data?: any }>({
         isOpen: false,
         data: undefined
@@ -282,6 +283,20 @@ export function PhongHocPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [perPage, setPerPage] = useState(10);
 
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            setDebouncedSearch(search.trim());
+        }, 300);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [search]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearch]);
+
     const { mutate: deleteClassroom, isPending: isDeleting } = useDeleteClassroom();
 
     const {
@@ -290,6 +305,7 @@ export function PhongHocPage() {
     } = useClassrooms({
         page: currentPage,
         pageSize: perPage,
+        className: debouncedSearch || undefined,
     });
 
     const total = classroomData?.total ?? 0;

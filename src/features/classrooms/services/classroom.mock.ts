@@ -10,10 +10,35 @@ let STORE: Classroom[] = [...mockClassroom] as Classroom[];
 const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 
 export const classroomMock: IClassroomService = {
-    async getClassrooms({ }: ClassroomFilter): Promise<PaginatedResult<Classroom>> {
+    async getClassrooms({ page = 1, pageSize = 10, className }: ClassroomFilter): Promise<PaginatedResult<Classroom>> {
         await delay();
 
-        const data = null, total = null, page = null, perPage = null, totalPages = 0;
+        const normalizedClassName = className?.trim().toLowerCase();
+
+        const filtered = STORE.filter((item) => {
+            if (!normalizedClassName) return true;
+            return item.className.toLowerCase().includes(normalizedClassName);
+        });
+
+        const sorted = [...filtered].sort((a, b) => {
+            const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            const byCreatedAt = bTime - aTime;
+
+            if (Number.isNaN(byCreatedAt) || byCreatedAt === 0) {
+                return Number(b.id) - Number(a.id);
+            }
+
+            return byCreatedAt;
+        });
+
+        const total = sorted.length;
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const data = sorted.slice(start, end);
+        const perPage = pageSize;
+        const totalPages = total ? Math.ceil(total / pageSize) : 0;
+
         return {
             data,
             total,
