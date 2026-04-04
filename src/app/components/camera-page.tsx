@@ -141,6 +141,8 @@ export function CameraPage() {
     };
 
     const handleSaveCamera = () => {
+        if (!isFormValid || isCreating || isUpdating) return;
+
         if (editingId) {
             updateCamera({
                 cameraId: editingId,
@@ -165,6 +167,21 @@ export function CameraPage() {
                 onSuccess: () => setShowModal(false)
             });
         }
+    };
+
+    const handleSubmitCamera = (e: React.FormEvent) => {
+        e.preventDefault();
+        handleSaveCamera();
+    };
+
+    const handleCameraFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+        if (e.key !== 'Enter' || e.shiftKey) return;
+
+        const target = e.target as HTMLElement;
+        if (target instanceof HTMLTextAreaElement) return;
+
+        e.preventDefault();
+        e.currentTarget.requestSubmit();
     };
 
     const confirmDelete = () => {
@@ -277,12 +294,22 @@ export function CameraPage() {
             {/* Modal Form */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <form
+                        onSubmit={handleSubmitCamera}
+                        onKeyDown={handleCameraFormKeyDown}
+                        className="bg-white rounded-xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+                    >
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-bold text-gray-800">
                                 {editingId ? 'Cập nhật camera' : 'Thêm camera mới'}
                             </h3>
-                            <button onClick={() => { setShowModal(false); setEditingId(null); setOriginalRoom(null); }} className="p-1 rounded-full hover:bg-gray-100 cursor-pointer transition-colors"><X className="w-5 h-5 text-gray-500" /></button>
+                            <button
+                                type="button"
+                                onClick={() => { setShowModal(false); setEditingId(null); setOriginalRoom(null); }}
+                                className="p-1 rounded-full hover:bg-gray-100 cursor-pointer transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-500" />
+                            </button>
                         </div>
                         <div className="space-y-4">
                             <div>
@@ -320,17 +347,23 @@ export function CameraPage() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
-                            <button onClick={() => { setShowModal(false); setEditingId(null); setOriginalRoom(null); }} className="px-5 py-2 rounded-lg border border-border text-sm hover:bg-muted cursor-pointer transition">Hủy</button>
                             <button
-                                onClick={handleSaveCamera}
+                                type="button"
+                                onClick={() => { setShowModal(false); setEditingId(null); setOriginalRoom(null); }}
+                                className="px-5 py-2 rounded-lg border border-border text-sm hover:bg-muted cursor-pointer transition"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="submit"
                                 disabled={!isFormValid || isCreating || isUpdating}
                                 className={`px-5 py-2 rounded-lg text-white text-sm font-semibold shadow-lg transition 
                                 ${(!isFormValid || isCreating || isUpdating) ? 'bg-gray-400 cursor-not-allowed shadow-none' : 'bg-[#009dd9] hover:bg-[#0088be] cursor-pointer'}`}
                             >
-                                {isCreating || isUpdating ? 'Đang lưu...' : 'Lưu camera'}
+                                {isCreating || isUpdating ? 'Đang lưu...' : 'Thêm camera'}
                             </button>
                         </div>
-                    </div>
+                    </form>
                 </div>
             )}
 

@@ -116,20 +116,17 @@ function CourseModal({
 }) {
   const isEdit = Boolean(initialData);
   const [courseName, setCourseName] = useState(initialData?.courseName ?? '');
-  const [formError, setFormError] = useState('');
 
   const { mutate: createCourse, isPending: isCreating } = useCreateCourse();
   const { mutate: updateCourse, isPending: isUpdating } = useUpdateCourse();
 
   const isPending = isCreating || isUpdating;
+  const isFormValid = courseName.trim() !== '';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!courseName.trim()) {
-      setFormError('Vui lòng nhập tên học phần');
-      return;
-    }
+    if (!isFormValid) return;
 
     const payload = { course_name: courseName.trim() };
 
@@ -138,7 +135,6 @@ function CourseModal({
         { id: initialData.id, request: payload },
         {
           onSuccess: onClose,
-          onError: (error: Error) => setFormError(error.message),
         },
       );
       return;
@@ -146,7 +142,6 @@ function CourseModal({
 
     createCourse(payload, {
       onSuccess: onClose,
-      onError: (error: Error) => setFormError(error.message),
     });
   };
 
@@ -162,8 +157,6 @@ function CourseModal({
           </button>
         </div>
 
-        {formError && <ErrorState message={formError} />}
-
         <div className="space-y-4">
           <div>
             <label className="block mb-1.5 text-sm font-medium text-gray-700">
@@ -173,6 +166,12 @@ function CourseModal({
               autoFocus
               value={courseName}
               onChange={(e) => setCourseName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
               className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:ring-2 focus:ring-[#009dd9]/30 outline-none transition"
               placeholder="VD: Lập trình Web"
             />
@@ -183,9 +182,15 @@ function CourseModal({
           <button type="button" onClick={onClose} disabled={isPending} className="px-5 py-2 rounded-lg border border-border text-sm hover:bg-muted cursor-pointer transition">
             Hủy
           </button>
-          <button type="submit" disabled={isPending} className="px-5 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] text-sm font-semibold shadow-lg flex items-center gap-2 cursor-pointer disabled:bg-gray-400">
-            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isEdit ? 'Cập nhật' : 'Tạo học phần'}
+          <button
+            type="submit"
+            disabled={!isFormValid || isPending}
+            className={`px-5 py-2 rounded-lg text-white text-sm font-semibold shadow-lg transition ${(!isFormValid || isPending)
+              ? 'bg-gray-400 cursor-not-allowed shadow-none'
+              : 'bg-[#009dd9] hover:bg-[#0088be] cursor-pointer'
+              }`}
+          >
+            {isCreating || isUpdating ? 'Đang lưu...' : 'Thêm học phần'}
           </button>
         </div>
       </form>
