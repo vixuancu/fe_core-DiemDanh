@@ -616,8 +616,8 @@ export function LopTinChiSinhVienPage() {
                   </tr>
                 ) : enrolledStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-muted-foreground italic">
-                      Không tìm thấy sinh viên phù hợp.
+                    <td colSpan={5} className="py-12 text-center text-muted-foreground">
+                        Danh sách trống
                     </td>
                   </tr>
                 ) : (

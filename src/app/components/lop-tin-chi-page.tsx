@@ -10,6 +10,7 @@ import {
 import type { CreateLopTinChiDto, LopTinChi } from '@/features/credit-classes/types';
 import { Search, Plus, MoreVertical, Loader2, AlertCircle, AlertTriangle, X } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
+import { DataTablePagination } from './ui/data-table-pagination';
 
 // ─── Error State ──────────────────────────────────────────────────────────────
 
@@ -431,6 +432,8 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
 export function LopTinChiPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
   const [showModal, setShowModal] = useState(false);
   const [editingClass, setEditingClass] = useState<LopTinChi | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; lop: LopTinChi | null }>({
@@ -438,20 +441,20 @@ export function LopTinChiPage() {
     lop: null,
   });
 
-  const { data, isLoading, isError, error } = useCreditClasses({ search, perPage: 100 }); 
+  const { data, isLoading, isError, error } = useCreditClasses({
+    search,
+    page: currentPage,
+    perPage,
+  });
   const { mutate: deleteClass, isPending: isDeleting } = useDeleteCreditClass();
 
   const creditClasses = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const lastPage = Math.max(1, data?.totalPages ?? 1);
 
-  const filteredClasses = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return creditClasses;
-
-    return creditClasses.filter((item) => {
-      const values = [item.maLop, item.tenMonHoc, item.tenGiangVien].join(' ').toLowerCase();
-      return values.includes(keyword);
-    });
-  }, [creditClasses, search]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const openCreateModal = () => {
     setEditingClass(null);
@@ -491,7 +494,7 @@ export function LopTinChiPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Tìm kiếm lớp tín chỉ..."
+            placeholder="Tìm theo mã lớp tín chỉ..."
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
           />
         </div>
@@ -517,16 +520,16 @@ export function LopTinChiPage() {
                     <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#009dd9]" />
                   </td>
                 </tr>
-              ) : filteredClasses.length === 0 ? (
+              ) : creditClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground italic">
-                    Tạm thời chưa có lớp tín chỉ nào.
+                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                    Danh sách trống
                   </td>
                 </tr>
               ) : (
-                filteredClasses.map((lop, index) => (
+                creditClasses.map((lop, index) => (
                   <tr key={lop.id} className="border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors">
-                    <td className="py-3.5 px-4 text-gray-600">{index + 1}</td>
+                    <td className="py-3.5 px-4 text-gray-600">{(currentPage - 1) * perPage + index + 1}</td>
                     <td className="py-3.5 px-4 text-gray-700">{lop.maLop}</td>
                     <td className="py-3.5 px-4 text-gray-700">{lop.tenMonHoc}</td>
                     <td className="py-3.5 px-4 text-gray-700">{lop.tenGiangVien}</td>
@@ -549,6 +552,19 @@ export function LopTinChiPage() {
             </tbody>
           </table>
         </div>
+
+        <DataTablePagination
+          currentPage={currentPage}
+          lastPage={lastPage}
+          total={total}
+          perPage={perPage}
+          onPageChange={setCurrentPage}
+          onPerPageChange={(value) => {
+            setPerPage(value);
+            setCurrentPage(1);
+          }}
+          perPageOptions={[10, 20, 30, 50]}
+        />
       </div>
 
       {/* Modal thêm lớp */}

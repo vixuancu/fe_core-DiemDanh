@@ -56,6 +56,7 @@ export interface CreditClassFormOptions {
 export interface CreditClassFilter {
   search?: string;
   giangVienId?: string;
+  isCancel?: boolean;
   page?: number;
   perPage?: number;
 }

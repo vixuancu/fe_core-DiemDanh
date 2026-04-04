@@ -35,6 +35,8 @@ interface TabMeta {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Tổng quan', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
+  { label: 'Quản lý tài khoản', path: '/tai-khoan', icon: <UserCog className="w-5 h-5" />, roles: ['admin'] },
+  { label: 'Quản lý camera', path: '/camera', icon: <Camera className="w-5 h-5" />, roles: ['admin'] },
   { label: 'Quản lý sinh viên', path: '/sinh-vien', icon: <GraduationCap className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
   { label: 'Học phần', path: '/hoc-phan', icon: <BookOpenText className="w-5 h-5" />, roles: ['admin'] },
   { label: 'Lớp hành chính', path: '/lop-hanh-chinh', icon: <School className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
@@ -45,8 +47,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Kết quả điểm danh', path: '/ket-qua-diem-danh', icon: <ClipboardCheck className="w-5 h-5" />, roles: ['giang_vien'] },
   { label: 'Lịch sử điểm danh', path: '/lich-su', icon: <History className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
   { label: 'Báo cáo thống kê', path: '/bao-cao', icon: <BarChart3 className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
-  { label: 'Quản lý camera', path: '/camera', icon: <Camera className="w-5 h-5" />, roles: ['admin'] },
-  { label: 'Quản lý tài khoản', path: '/tai-khoan', icon: <UserCog className="w-5 h-5" />, roles: ['admin'] },
 ];
 
 const TAB_META: Record<string, TabMeta> = {
