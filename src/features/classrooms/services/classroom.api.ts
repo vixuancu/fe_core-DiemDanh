@@ -34,7 +34,19 @@ export const classroomApi: IClassroomService = {
             headers: getAuthHeaders(),
         });
         const payload = await parseListEnvelope<ClassroomResponse>(res);
-        const data = payload.data.map(mapClassroom);
+        const sortedItems = [...payload.data].sort((a, b) => {
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+            const byCreatedAt = bTime - aTime;
+
+            if (Number.isNaN(byCreatedAt) || byCreatedAt === 0) {
+                return Number(b.id) - Number(a.id);
+            }
+
+            return byCreatedAt;
+        });
+
+        const data = sortedItems.map(mapClassroom);
         return {
             data,
             total: payload.total,
