@@ -68,7 +68,7 @@ function ClassDetailModal({ lop, onClose }: { lop: LopTinChi; onClose: () => voi
         </div>
 
         <div className="overflow-y-auto pr-1 space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="rounded-xl border border-border p-4 bg-gray-50/60">
               <div className="flex items-center gap-2 mb-2 text-gray-600 text-sm">
                 <BookOpenText className="w-4 h-4" />
@@ -77,22 +77,7 @@ function ClassDetailModal({ lop, onClose }: { lop: LopTinChi; onClose: () => voi
               <div className="space-y-2 text-sm">
                 <div><span className="text-gray-500">Mã lớp:</span> <span className="font-medium text-gray-800">{lop.maLop}</span></div>
                 <div><span className="text-gray-500">Học phần:</span> <span className="font-medium text-gray-800">{lop.tenMonHoc}</span></div>
-                <div><span className="text-gray-500">Giảng viên:</span> <span className="font-medium text-gray-800">{lop.tenGiangVien}</span></div>
-                <div><span className="text-gray-500">Phòng mặc định:</span> <span className="font-medium text-gray-800">{lop.tenPhongHoc}</span></div>
                 <div><span className="text-gray-500">Sĩ số:</span> <span className="font-medium text-gray-800">{lop.siSo}</span></div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border p-4 bg-gray-50/60">
-              <div className="flex items-center gap-2 mb-2 text-gray-600 text-sm">
-                <CalendarDays className="w-4 h-4" />
-                Thời gian học
-              </div>
-              <div className="space-y-2 text-sm">
-                <div><span className="text-gray-500">Khoảng ngày:</span> <span className="font-medium text-gray-800">{lop.startDate.slice(0, 10)} - {lop.endDate.slice(0, 10)}</span></div>
-                <div><span className="text-gray-500">Mẫu lịch gốc:</span> <span className="font-medium text-gray-800">{resolveWeekdayLabel(lop.dayOfWeek)} - {resolvePeriodText(lop.startPeriod, lop.numberOfPeriods)}</span></div>
-                <div><span className="text-gray-500">Giờ bắt đầu:</span> <span className="font-medium text-gray-800">{lop.startTime || 'Chưa có'}</span></div>
-                <div><span className="text-gray-500">Giờ kết thúc:</span> <span className="font-medium text-gray-800">{lop.endTime || 'Chưa có'}</span></div>
               </div>
             </div>
           </div>
@@ -135,7 +120,7 @@ function ClassDetailModal({ lop, onClose }: { lop: LopTinChi; onClose: () => voi
                     <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
                       <span className="text-gray-500">Giảng viên:</span>
                       <span className="font-medium text-gray-800">
-                        {schedule.userFullName || lop.tenGiangVien}
+                        {schedule.userFullName || 'Chưa có giảng viên'}
                       </span>
                     </div>
                   </div>
@@ -721,7 +706,6 @@ export function LopTinChiPage() {
                 <th className="text-left py-3.5 px-4 font-normal w-[60px]">STT</th>
                 <th className="text-left py-3.5 px-4 font-normal">Mã lớp tín chỉ</th>
                 <th className="text-left py-3.5 px-4 font-normal">Tên học phần</th>
-                <th className="text-left py-3.5 px-4 font-normal">Giảng viên</th>
                 <th className="text-left py-3.5 px-4 font-normal">Sĩ số</th>
                 <th className="text-center py-3.5 px-4 font-normal w-[90px]">Thao tác</th>
               </tr>
@@ -729,13 +713,13 @@ export function LopTinChiPage() {
             <tbody className="text-gray-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
+                  <td colSpan={5} className="py-12 text-center">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#009dd9]" />
                   </td>
                 </tr>
               ) : creditClasses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={5} className="py-12 text-center text-muted-foreground">
                     Danh sách trống
                   </td>
                 </tr>
@@ -745,7 +729,6 @@ export function LopTinChiPage() {
                     <td className="py-3.5 px-4 text-gray-600">{(currentPage - 1) * perPage + index + 1}</td>
                     <td className="py-3.5 px-4 text-gray-700">{lop.maLop}</td>
                     <td className="py-3.5 px-4 text-gray-700">{lop.tenMonHoc}</td>
-                    <td className="py-3.5 px-4 text-gray-700">{lop.tenGiangVien}</td>
                     <td className="py-3.5 px-4 text-gray-700">{lop.siSo}</td>
                     <td className="py-3.5 px-4 text-center">
                       <ActionDropdown
