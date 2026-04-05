@@ -224,7 +224,7 @@ export const creditClassApi: ICreditClassService = {
   async list(filter: CreditClassFilter): Promise<PaginatedResult<LopTinChi>> {
     const params = new URLSearchParams();
     if (filter.search) params.set('search', filter.search);
-    if (typeof filter.isCancel === 'boolean') params.set('is_cancel', String(filter.isCancel));
+    params.set('is_cancel', String(typeof filter.isCancel === 'boolean' ? filter.isCancel : false));
     params.set('page', String(filter.page ?? 1));
     params.set('page_size', String(filter.perPage ?? 10));
 
