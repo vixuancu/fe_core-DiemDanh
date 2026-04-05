@@ -220,7 +220,6 @@ function DeleteConfirmationModal({
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">
             Bạn có chắc chắn muốn xóa học phần <span className="font-semibold text-gray-800">"{course?.courseName}"</span>?
             <br />
-            Hành động này không thể hoàn tác.
           </p>
         </div>
 

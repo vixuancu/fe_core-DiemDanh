@@ -213,7 +213,6 @@ export function LichHocPage() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div>
           <h2>{isGiangVien ? 'Lịch dạy theo buổi học' : 'Thời khóa biểu buổi học'}</h2>
-          <p className="text-sm text-muted-foreground mt-1">Hiển thị theo các buổi học đã sinh từ lớp tín chỉ.</p>
         </div>
       </div>
 

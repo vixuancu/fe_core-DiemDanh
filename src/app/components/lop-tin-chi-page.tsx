@@ -794,7 +794,6 @@ export function LopTinChiPage() {
                 Bạn có chắc chắn muốn xóa lớp tín chỉ{' '}
                 <span className="font-semibold text-gray-800">"{deleteModal.lop?.maLop}"</span>?
                 <br />
-                Hành động này không thể hoàn tác.
               </p>
             </div>
             <div className="flex gap-3 mt-8">
