@@ -7,10 +7,15 @@ import {
   useUpdateCreditClass,
   useDeleteCreditClass,
 } from '@/features/credit-classes/hooks/useCreditClasses';
-import type { CreateLopTinChiDto, LopTinChi } from '@/features/credit-classes/types';
-import { Search, Plus, MoreVertical, Loader2, AlertCircle, AlertTriangle, X } from 'lucide-react';
+import type {
+  CreateLopTinChiDto,
+  CreateLopTinChiScheduleDto,
+  LopTinChi,
+} from '@/features/credit-classes/types';
+import { Search, Plus, MoreVertical, Loader2, AlertCircle, AlertTriangle, X, CalendarDays, Clock3, MapPin, BookOpenText } from 'lucide-react';
 import { PortableSelect } from './ui/portable-form-controls';
 import { DataTablePagination } from './ui/data-table-pagination';
+import { notify } from '@/shared/lib/notify';
 
 // ─── Error State ──────────────────────────────────────────────────────────────
 
@@ -23,13 +28,142 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
+function resolveWeekdayLabel(dayOfWeek: number): string {
+  const labels: Record<number, string> = {
+    2: 'Thứ 2',
+    3: 'Thứ 3',
+    4: 'Thứ 4',
+    5: 'Thứ 5',
+    6: 'Thứ 6',
+    7: 'Thứ 7',
+    8: 'Chủ nhật',
+  };
+
+  return labels[dayOfWeek] || `Thứ ${dayOfWeek}`;
+}
+
+function resolvePeriodText(
+  startPeriod: number,
+  numberOfPeriods: number,
+  endPeriod?: number,
+) {
+  const finalEndPeriod = endPeriod ?? startPeriod + numberOfPeriods - 1;
+  return `Tiết ${startPeriod}-${finalEndPeriod}`;
+}
+
+function ClassDetailModal({ lop, onClose }: { lop: LopTinChi; onClose: () => void }) {
+  const schedules = lop.schedules ?? [];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl w-full max-w-3xl p-6 max-h-[90vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Chi tiết lớp tín chỉ</h3>
+            <p className="text-sm text-gray-500 mt-1">Xem thông tin tổng quát và các buổi học của lớp.</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto pr-1 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-border p-4 bg-gray-50/60">
+              <div className="flex items-center gap-2 mb-2 text-gray-600 text-sm">
+                <BookOpenText className="w-4 h-4" />
+                Thông tin lớp
+              </div>
+              <div className="space-y-2 text-sm">
+                <div><span className="text-gray-500">Mã lớp:</span> <span className="font-medium text-gray-800">{lop.maLop}</span></div>
+                <div><span className="text-gray-500">Học phần:</span> <span className="font-medium text-gray-800">{lop.tenMonHoc}</span></div>
+                <div><span className="text-gray-500">Giảng viên:</span> <span className="font-medium text-gray-800">{lop.tenGiangVien}</span></div>
+                <div><span className="text-gray-500">Phòng mặc định:</span> <span className="font-medium text-gray-800">{lop.tenPhongHoc}</span></div>
+                <div><span className="text-gray-500">Sĩ số:</span> <span className="font-medium text-gray-800">{lop.siSo}</span></div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border p-4 bg-gray-50/60">
+              <div className="flex items-center gap-2 mb-2 text-gray-600 text-sm">
+                <CalendarDays className="w-4 h-4" />
+                Thời gian học
+              </div>
+              <div className="space-y-2 text-sm">
+                <div><span className="text-gray-500">Khoảng ngày:</span> <span className="font-medium text-gray-800">{lop.startDate.slice(0, 10)} - {lop.endDate.slice(0, 10)}</span></div>
+                <div><span className="text-gray-500">Mẫu lịch gốc:</span> <span className="font-medium text-gray-800">{resolveWeekdayLabel(lop.dayOfWeek)} - {resolvePeriodText(lop.startPeriod, lop.numberOfPeriods)}</span></div>
+                <div><span className="text-gray-500">Giờ bắt đầu:</span> <span className="font-medium text-gray-800">{lop.startTime || 'Chưa có'}</span></div>
+                <div><span className="text-gray-500">Giờ kết thúc:</span> <span className="font-medium text-gray-800">{lop.endTime || 'Chưa có'}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-gray-700 text-sm font-medium">
+                <Clock3 className="w-4 h-4" />
+                Danh sách buổi học
+              </div>
+              <span className="text-xs text-gray-500">{schedules.length} buổi</span>
+            </div>
+
+            {schedules.length === 0 ? (
+              <div className="text-sm text-gray-500">Chưa có lịch học chi tiết.</div>
+            ) : (
+              <div className="space-y-3">
+                {schedules.map((schedule, index) => (
+                  <div key={schedule.id ?? `${schedule.dayOfWeek}-${index}`} className="rounded-lg border border-border p-3 bg-white">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <div className="font-medium text-gray-800 text-sm">
+                        {schedule.displayText || `${schedule.dayOfWeekLabel || resolveWeekdayLabel(schedule.dayOfWeek)} - ${resolvePeriodText(schedule.startPeriod, schedule.numberOfPeriods, schedule.endPeriod)}`}
+                      </div>
+                      <div className="text-xs text-gray-500">{schedule.roomName || 'Chưa có phòng'}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4" />
+                        {schedule.dayOfWeekLabel || resolveWeekdayLabel(schedule.dayOfWeek)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock3 className="w-4 h-4" />
+                        {resolvePeriodText(schedule.startPeriod, schedule.numberOfPeriods, schedule.endPeriod)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        {schedule.roomName || 'Chưa có phòng'}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
+                      <span className="text-gray-500">Giảng viên:</span>
+                      <span className="font-medium text-gray-800">
+                        {schedule.userFullName || lop.tenGiangVien}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 mt-6 shrink-0 border-t border-border pt-4">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] cursor-pointer">
+            Đóng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActionDropdown({
   lop,
+  onViewDetail,
   onEditClick,
   onDeleteClick,
   onOpenStudents,
 }: {
   lop: LopTinChi;
+  onViewDetail: (lop: LopTinChi) => void;
   onEditClick: (lop: LopTinChi) => void;
   onDeleteClick: (lop: LopTinChi) => void;
   onOpenStudents: (lop: LopTinChi) => void;
@@ -107,6 +241,15 @@ function ActionDropdown({
           <button
             className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors font-normal"
             onClick={() => {
+              onViewDetail(lop);
+              setIsOpen(false);
+            }}
+          >
+            Chi tiết
+          </button>
+          <button
+            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors font-normal"
+            onClick={() => {
               onEditClick(lop);
               setIsOpen(false);
             }}
@@ -152,29 +295,31 @@ const DAY_OF_WEEK_OPTIONS = [
 interface CreateLopTinChiForm {
   maLop: string;
   courseId: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface ScheduleRowForm {
   giangVienId: string;
   roomId: string;
   dayOfWeek: number;
-  startDate: string;
-  endDate: string;
   startPeriod: number;
   numberOfPeriods: number;
-  startTime: string;
-  endTime: string;
 }
 
 const EMPTY_FORM: CreateLopTinChiForm = {
   maLop: '',
   courseId: '',
+  startDate: '',
+  endDate: '',
+};
+
+const EMPTY_SCHEDULE_ROW: ScheduleRowForm = {
   giangVienId: '',
   roomId: '',
   dayOfWeek: 2,
-  startDate: '',
-  endDate: '',
   startPeriod: 1,
   numberOfPeriods: 1,
-  startTime: '',
-  endTime: '',
 };
 
 function toDateInput(value?: string): string {
@@ -182,15 +327,9 @@ function toDateInput(value?: string): string {
   return value.slice(0, 10);
 }
 
-function toDateTimeLocalInput(value?: string): string {
-  if (!value) return '';
-  const normalized = value.replace(' ', 'T');
-  return normalized.slice(0, 16);
-}
-
 function AddClassModal({ onClose, initialData }: { onClose: () => void; initialData?: LopTinChi | null }) {
   const [form, setForm] = useState<CreateLopTinChiForm>(EMPTY_FORM);
-  const [formError, setFormError] = useState('');
+  const [schedules, setSchedules] = useState<ScheduleRowForm[]>([{ ...EMPTY_SCHEDULE_ROW }]);
   const { data: formOptions, isLoading: isLoadingOptions } = useCreditClassFormOptions();
   const { mutate: create, isPending } = useCreateCreditClass();
   const { mutate: update, isPending: isUpdating } = useUpdateCreditClass();
@@ -198,22 +337,34 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
   useEffect(() => {
     if (!initialData) {
       setForm(EMPTY_FORM);
+      setSchedules([{ ...EMPTY_SCHEDULE_ROW }]);
       return;
     }
+
+    const mappedSchedules = (initialData.schedules ?? []).map((schedule) => ({
+      giangVienId: schedule.userId ?? initialData.giangVienId,
+      roomId: schedule.roomId ?? initialData.roomId,
+      dayOfWeek: schedule.dayOfWeek,
+      startPeriod: schedule.startPeriod,
+      numberOfPeriods: schedule.numberOfPeriods,
+    }));
+
+    const fallbackSchedule: ScheduleRowForm = {
+      giangVienId: initialData.giangVienId,
+      roomId: initialData.roomId,
+      dayOfWeek: initialData.dayOfWeek,
+      startPeriod: initialData.startPeriod,
+      numberOfPeriods: initialData.numberOfPeriods,
+    };
 
     setForm({
       maLop: initialData.maLop,
       courseId: initialData.courseId,
-      giangVienId: initialData.giangVienId,
-      roomId: initialData.roomId,
-      dayOfWeek: initialData.dayOfWeek,
       startDate: toDateInput(initialData.startDate),
       endDate: toDateInput(initialData.endDate),
-      startPeriod: initialData.startPeriod,
-      numberOfPeriods: initialData.numberOfPeriods,
-      startTime: toDateTimeLocalInput(initialData.startTime),
-      endTime: toDateTimeLocalInput(initialData.endTime),
     });
+
+    setSchedules(mappedSchedules.length > 0 ? mappedSchedules : [fallbackSchedule]);
   }, [initialData]);
 
   const handleChange = <K extends keyof CreateLopTinChiForm>(
@@ -221,39 +372,83 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
     value: CreateLopTinChiForm[K],
   ) => {
     setForm((f) => ({ ...f, [key]: value }));
-    setFormError('');
+  };
+
+  const updateSchedule = <K extends keyof ScheduleRowForm>(
+    index: number,
+    key: K,
+    value: ScheduleRowForm[K],
+  ) => {
+    setSchedules((rows) =>
+      rows.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)),
+    );
+  };
+
+  const addSchedule = () => {
+    setSchedules((rows) => [...rows, { ...EMPTY_SCHEDULE_ROW }]);
+  };
+
+  const removeSchedule = (index: number) => {
+    setSchedules((rows) => {
+      const nextRows = rows.filter((_, rowIndex) => rowIndex !== index);
+      return nextRows.length > 0 ? nextRows : [{ ...EMPTY_SCHEDULE_ROW }];
+    });
   };
 
   const handleSave = () => {
     if (
       !form.maLop ||
       !form.courseId ||
-      !form.giangVienId ||
-      !form.roomId ||
       !form.startDate ||
       !form.endDate
     ) {
-      setFormError('Vui lòng điền đầy đủ thông tin bắt buộc');
+      notify.error('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
 
     if (form.startDate >= form.endDate) {
-      setFormError('Ngày bắt đầu phải nhỏ hơn ngày kết thúc');
+      notify.error('Ngày bắt đầu phải nhỏ hơn ngày kết thúc');
       return;
     }
+
+    if (!schedules.length) {
+      notify.error('Vui lòng thêm ít nhất 1 buổi học');
+      return;
+    }
+
+    const hasInvalidSchedule = schedules.some(
+      (schedule) =>
+        !schedule.giangVienId ||
+        !schedule.roomId ||
+        !schedule.dayOfWeek ||
+        !schedule.startPeriod ||
+        !schedule.numberOfPeriods,
+    );
+
+    if (hasInvalidSchedule) {
+      notify.error('Vui lòng nhập đủ giảng viên, phòng và lịch dạy cho từng buổi học');
+      return;
+    }
+
+    const firstSchedule = schedules[0];
 
     const payload: CreateLopTinChiDto = {
       maLop: form.maLop,
       courseId: form.courseId,
-      giangVienId: form.giangVienId,
-      roomId: form.roomId,
-      dayOfWeek: form.dayOfWeek,
+      giangVienId: firstSchedule.giangVienId,
+      roomId: firstSchedule.roomId,
+      dayOfWeek: firstSchedule.dayOfWeek,
       startDate: `${form.startDate}T00:00:00`,
       endDate: `${form.endDate}T00:00:00`,
-      startPeriod: form.startPeriod,
-      numberOfPeriods: form.numberOfPeriods,
-      startTime: form.startTime || undefined,
-      endTime: form.endTime || undefined,
+      startPeriod: firstSchedule.startPeriod,
+      numberOfPeriods: firstSchedule.numberOfPeriods,
+      schedules: schedules.map((schedule): CreateLopTinChiScheduleDto => ({
+        userId: schedule.giangVienId,
+        roomId: schedule.roomId,
+        dayOfWeek: schedule.dayOfWeek,
+        startPeriod: schedule.startPeriod,
+        numberOfPeriods: schedule.numberOfPeriods,
+      })),
     };
 
     if (initialData) {
@@ -261,7 +456,6 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
         { id: initialData.id, dto: payload },
         {
           onSuccess: () => onClose(),
-          onError: (err: Error) => setFormError(err.message),
         },
       );
       return;
@@ -269,7 +463,6 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
 
     create(payload, {
       onSuccess: () => onClose(),
-      onError: (err: Error) => setFormError(err.message),
     });
   };
 
@@ -280,8 +473,6 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
           <h3>{initialData ? 'Cập nhật lớp tín chỉ' : 'Thêm lớp tín chỉ'}</h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-muted cursor-pointer"><X className="w-5 h-5" /></button>
         </div>
-
-        {formError && <ErrorState message={formError} />}
 
         {isLoadingOptions ? (
           <div className="py-8 text-sm text-muted-foreground text-center">Đang tải dữ liệu form...</div>
@@ -312,67 +503,6 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
             </PortableSelect>
           </div>
           <div>
-            <label className="block mb-1 text-sm">Giảng viên <span className="text-red-500">*</span></label>
-            <PortableSelect
-              value={form.giangVienId}
-              onChange={e => handleChange('giangVienId', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-              labelClassName="text-sm"
-            >
-              <option value="">Chọn giảng viên</option>
-              {(formOptions?.lecturers ?? []).map((lecturer) => (
-                <option key={lecturer.id} value={lecturer.id}>{lecturer.name}</option>
-              ))}
-            </PortableSelect>
-          </div>
-          <div>
-            <label className="block mb-1 text-sm">Phòng học <span className="text-red-500">*</span></label>
-            <PortableSelect
-              value={form.roomId}
-              onChange={e => handleChange('roomId', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-              labelClassName="text-sm"
-            >
-              <option value="">Chọn phòng học</option>
-              {(formOptions?.rooms ?? []).map((room) => (
-                <option key={room.id} value={room.id}>{room.name}</option>
-              ))}
-            </PortableSelect>
-          </div>
-          <div>
-            <label className="block mb-1 text-sm">Thứ học <span className="text-red-500">*</span></label>
-            <PortableSelect
-              value={String(form.dayOfWeek)}
-              onChange={e => handleChange('dayOfWeek', Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-              labelClassName="text-sm"
-            >
-              {DAY_OF_WEEK_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>{item.label}</option>
-              ))}
-            </PortableSelect>
-          </div>
-          <div>
-            <label className="block mb-1 text-sm">Tiết bắt đầu <span className="text-red-500">*</span></label>
-            <input
-              type="number"
-              min={1}
-              value={form.startPeriod}
-              onChange={e => handleChange('startPeriod', Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm">Số tiết <span className="text-red-500">*</span></label>
-            <input
-              type="number"
-              min={1}
-              value={form.numberOfPeriods}
-              onChange={e => handleChange('numberOfPeriods', Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-            />
-          </div>
-          <div>
             <label className="block mb-1 text-sm">Ngày bắt đầu <span className="text-red-500">*</span></label>
             <input
               type="date"
@@ -390,24 +520,102 @@ function AddClassModal({ onClose, initialData }: { onClose: () => void; initialD
               className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
             />
           </div>
-          <div>
-            <label className="block mb-1 text-sm">Giờ bắt đầu</label>
-            <input
-              type="datetime-local"
-              value={form.startTime}
-              onChange={e => handleChange('startTime', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-            />
+        </div>
+
+        <div className="mt-6 border-t border-border pt-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-800">Danh sách buổi học</h4>
+            </div>
+            <button
+              type="button"
+              onClick={addSchedule}
+              className="px-3 py-2 rounded-lg border border-[#009dd9]/30 text-[#009dd9] text-sm hover:bg-[#009dd9]/5 transition-colors"
+            >
+              Thêm buổi học
+            </button>
           </div>
-          <div className="md:col-span-2">
-            <label className="block mb-1 text-sm">Giờ kết thúc</label>
-            <input
-              type="datetime-local"
-              value={form.endTime}
-              onChange={e => handleChange('endTime', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-            />
-          </div>
+
+            <div className="space-y-4">
+              {schedules.map((schedule, index) => (
+                <div key={index} className="rounded-xl border border-border p-4 bg-gray-50/50">
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="text-sm font-medium text-gray-700">Buổi học {index + 1}</h5>
+                    <button
+                      type="button"
+                      onClick={() => removeSchedule(index)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Xóa buổi này
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block mb-1 text-sm">Giảng viên <span className="text-red-500">*</span></label>
+                      <PortableSelect
+                        value={schedule.giangVienId}
+                        onChange={(e) => updateSchedule(index, 'giangVienId', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                        labelClassName="text-sm"
+                      >
+                        <option value="">Chọn giảng viên</option>
+                        {(formOptions?.lecturers ?? []).map((lecturer) => (
+                          <option key={lecturer.id} value={lecturer.id}>{lecturer.name}</option>
+                        ))}
+                      </PortableSelect>
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-sm">Phòng học <span className="text-red-500">*</span></label>
+                      <PortableSelect
+                        value={schedule.roomId}
+                        onChange={(e) => updateSchedule(index, 'roomId', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                        labelClassName="text-sm"
+                      >
+                        <option value="">Chọn phòng học</option>
+                        {(formOptions?.rooms ?? []).map((room) => (
+                          <option key={room.id} value={room.id}>{room.name}</option>
+                        ))}
+                      </PortableSelect>
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-sm">Thứ học <span className="text-red-500">*</span></label>
+                      <PortableSelect
+                        value={String(schedule.dayOfWeek)}
+                        onChange={(e) => updateSchedule(index, 'dayOfWeek', Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                        labelClassName="text-sm"
+                      >
+                        {DAY_OF_WEEK_OPTIONS.map((item) => (
+                          <option key={item.value} value={item.value}>{item.label}</option>
+                        ))}
+                      </PortableSelect>
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-sm">Tiết bắt đầu <span className="text-red-500">*</span></label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={schedule.startPeriod}
+                        onChange={(e) => updateSchedule(index, 'startPeriod', Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-sm">Số tiết <span className="text-red-500">*</span></label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={schedule.numberOfPeriods}
+                        onChange={(e) => updateSchedule(index, 'numberOfPeriods', Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
         </div>
         </div>
         )}
@@ -436,6 +644,7 @@ export function LopTinChiPage() {
   const [perPage, setPerPage] = useState(10);
   const [showModal, setShowModal] = useState(false);
   const [editingClass, setEditingClass] = useState<LopTinChi | null>(null);
+  const [detailClass, setDetailClass] = useState<LopTinChi | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; lop: LopTinChi | null }>({
     isOpen: false,
     lop: null,
@@ -464,6 +673,10 @@ export function LopTinChiPage() {
   const openEditModal = (lop: LopTinChi) => {
     setEditingClass(lop);
     setShowModal(true);
+  };
+
+  const openDetailModal = (lop: LopTinChi) => {
+    setDetailClass(lop);
   };
 
   const handleDelete = (lop: LopTinChi) => {
@@ -537,6 +750,7 @@ export function LopTinChiPage() {
                     <td className="py-3.5 px-4 text-center">
                       <ActionDropdown
                         lop={lop}
+                        onViewDetail={openDetailModal}
                         onEditClick={openEditModal}
                         onDeleteClick={(target) => handleDelete(target)}
                         onOpenStudents={(target) =>
@@ -575,6 +789,13 @@ export function LopTinChiPage() {
             setEditingClass(null);
           }}
           initialData={editingClass}
+        />
+      )}
+
+      {detailClass && (
+        <ClassDetailModal
+          lop={detailClass}
+          onClose={() => setDetailClass(null)}
         />
       )}
 

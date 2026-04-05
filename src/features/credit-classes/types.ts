@@ -19,10 +19,35 @@ export interface LopTinChi {
   startTime?: string;
   endTime?: string;
   siSo: number;
+  schedules?: LopTinChiSchedule[];
 //   hocKy: string;
 }
 
+export interface LopTinChiSchedule {
+  id?: string;
+  userId?: string;
+  userFullName?: string;
+  dayOfWeek: number;
+  dayOfWeekLabel?: string;
+  startPeriod: number;
+  endPeriod?: number;
+  numberOfPeriods: number;
+  startTime?: string;
+  endTime?: string;
+  roomId?: string;
+  roomName?: string;
+  displayText?: string;
+}
+
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
+
+export interface CreateLopTinChiScheduleDto {
+  userId?: string;
+  dayOfWeek: number;
+  startPeriod: number;
+  numberOfPeriods: number;
+  roomId?: string;
+}
 
 export interface CreateLopTinChiDto {
   maLop: string;
@@ -34,8 +59,7 @@ export interface CreateLopTinChiDto {
   endDate: string;
   startPeriod: number;
   numberOfPeriods: number;
-  startTime?: string;
-  endTime?: string;
+  schedules?: CreateLopTinChiScheduleDto[];
 }
 
 export type UpdateLopTinChiDto = Partial<CreateLopTinChiDto>;

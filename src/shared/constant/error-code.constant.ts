@@ -7,6 +7,8 @@ export const ERROR_MESSAGES: Record<string, string> = {
     'COURSE_SECTION_NOT_FOUND': 'Không tìm thấy lớp tín chỉ.',
     'COURSE_SECTION_NAME_IS_EXISTED': 'Mã lớp tín chỉ đã tồn tại trong hệ thống.',
     'LECTURER_NOT_FOUND': 'Giảng viên không hợp lệ hoặc không tồn tại.',
+    'LECTURER_SCHEDULE_CONFLICT': 'Trùng lịch học với lớp khác.',
+    'ROOM_SCHEDULE_CONFLICT': 'Trùng lịch học với lớp khác.',
     'INVALID_DATE_RANGE': 'Khoảng ngày học không hợp lệ.',
     'INVALID_TIME_RANGE': 'Khoảng giờ học không hợp lệ.',
 

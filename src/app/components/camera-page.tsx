@@ -274,22 +274,18 @@ export function CameraPage() {
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            {/* Pagination */}
-            {total > 0 && (
-                <div className="mt-4">
-                    <DataTablePagination
-                        currentPage={currentPage}
-                        lastPage={lastPage}
-                        total={total}
-                        perPage={perPage}
-                        onPageChange={setCurrentPage}
-                        onPerPageChange={(n) => { setPerPage(n); setCurrentPage(1); }}
-                        perPageOptions={[10, 20, 30, 50]}
-                    />
-                </div>
-            )}
+                {/* Pagination */}
+                <DataTablePagination
+                    currentPage={currentPage}
+                    lastPage={lastPage}
+                    total={total}
+                    perPage={perPage}
+                    onPageChange={setCurrentPage}
+                    onPerPageChange={(n) => { setPerPage(n); setCurrentPage(1); }}
+                    perPageOptions={[10, 20, 30, 50]}
+                />
+            </div>
 
             {/* Modal Form */}
             {showModal && (
