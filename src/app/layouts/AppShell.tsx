@@ -1,18 +1,27 @@
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { roleLabels, type UserRole } from '@/shared/types';
 import {
-    BarChart3,
+  BarChart3,
     Bell,
-    BookOpen, BookOpenText, Building2, CalendarDays,
-    Camera,
+  BookCopy,
+  Building2,
+  CalendarClock,
+  CalendarDays,
+  Camera,
     ChevronDown,
+  ChevronRight,
     ClipboardCheck,
-    GraduationCap,
+  DoorOpen,
+  FolderKanban,
+  Gauge,
     History,
-    LayoutDashboard,
+  Layers3,
     LogOut, Menu,
+  Presentation,
     ScanFace,
     School,
+  Users,
+  Video,
     UserCog,
     X,
 } from 'lucide-react';
@@ -28,25 +37,73 @@ interface NavItem {
   roles: UserRole[];
 }
 
+interface NavGroup {
+  label: string;
+  icon: React.ReactNode;
+  children: NavItem[];
+}
+
 interface TabMeta {
   title: string;
   description?: string;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Tổng quan', path: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
-  { label: 'Quản lý tài khoản', path: '/tai-khoan', icon: <UserCog className="w-5 h-5" />, roles: ['admin'] },
-  { label: 'Quản lý camera', path: '/camera', icon: <Camera className="w-5 h-5" />, roles: ['admin'] },
-  { label: 'Quản lý sinh viên', path: '/sinh-vien', icon: <GraduationCap className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
-  { label: 'Học phần', path: '/hoc-phan', icon: <BookOpenText className="w-5 h-5" />, roles: ['admin'] },
-  { label: 'Lớp hành chính', path: '/lop-hanh-chinh', icon: <School className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
-  { label: 'Lớp tín chỉ', path: '/lop-tin-chi', icon: <BookOpen className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
-  { label: 'Phòng học', path: '/phong-hoc', icon: <Building2 className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
-  { label: 'Lịch dạy', path: '/lich-hoc', icon: <CalendarDays className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
-  { label: 'Điểm danh', path: '/diem-danh', icon: <ScanFace className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
-  { label: 'Kết quả điểm danh', path: '/ket-qua-diem-danh', icon: <ClipboardCheck className="w-5 h-5" />, roles: ['giang_vien'] },
-  { label: 'Lịch sử điểm danh', path: '/lich-su', icon: <History className="w-5 h-5" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
-  { label: 'Báo cáo thống kê', path: '/bao-cao', icon: <BarChart3 className="w-5 h-5" />, roles: ['admin', 'giao_vu'] },
+const NAV_OVERVIEW: NavItem = {
+  label: 'Tổng quan',
+  path: '/dashboard',
+  icon: null,
+  roles: ['admin', 'giao_vu', 'giang_vien'],
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Quản lý phòng học và camera',
+    icon: null,
+    // icon: <Building2 className="w-5 h-5" />,
+    children: [
+      { label: 'Phòng học', path: '/phong-hoc', icon: <DoorOpen className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+      { label: 'Camera', path: '/camera', icon: <Video className="w-4 h-4" />, roles: ['admin'] },
+    ],
+  },
+  {
+    label: 'Quản lý lớp học',
+    icon: null,
+    // icon: <Layers3 className="w-5 h-5" />,
+    children: [
+      { label: 'Lớp hành chính', path: '/lop-hanh-chinh', icon: <School className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+      { label: 'Học phần', path: '/hoc-phan', icon: <BookCopy className="w-4 h-4" />, roles: ['admin'] },
+      { label: 'Lớp tín chỉ', path: '/lop-tin-chi', icon: <Presentation className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+    ],
+  },
+  {
+    label: 'Quản lý lịch học',
+    icon: null,
+    // icon: <CalendarClock className="w-5 h-5" />,
+    children: [
+      { label: 'Lịch học', path: '/lich-hoc', icon: <CalendarDays className="w-4 h-4" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
+      { label: 'Điều chỉnh lịch học', path: '/lich-hoc', icon: <CalendarClock className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+    ],
+  },
+  {
+    label: 'Quản lý điểm danh',
+    icon: null,
+    // icon: <ClipboardCheck className="w-5 h-5" />,
+    children: [
+      { label: 'Điểm danh', path: '/diem-danh', icon: <ScanFace className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+      { label: 'Lịch sử điểm danh', path: '/lich-su', icon: <History className="w-4 h-4" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
+    ],
+  },
+  {
+    label: 'Quản lý hệ thống',
+    icon: null,
+    // icon: <FolderKanban className="w-5 h-5" />,
+    children: [
+      { label: 'Quản lý tài khoản', path: '/tai-khoan', icon: <UserCog className="w-4 h-4" />, roles: ['admin'] },
+      { label: 'Quản lý sinh viên', path: '/sinh-vien', icon: <Users className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+      { label: 'Báo cáo thống kê', path: '/bao-cao', icon: <BarChart3 className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+      { label: 'Kết quả điểm danh', path: '/ket-qua-diem-danh', icon: <ClipboardCheck className="w-4 h-4" />, roles: ['admin', 'giao_vu','giang_vien'] },
+    ],
+  },
 ];
 
 const TAB_META: Record<string, TabMeta> = {
@@ -116,16 +173,29 @@ export function AppShell() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   if (!user) return null;
 
-  const filteredNav = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
+  const canViewOverview = NAV_OVERVIEW.roles.includes(user.role);
+  const filteredGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    children: group.children.filter((item) => item.roles.includes(user.role)),
+  })).filter((group) => group.children.length > 0);
+  const flatNavItems = filteredGroups.flatMap((group) => group.children);
   const tabMeta = getTabMeta(location.pathname);
   const isCreditClassStudentDetail = /^\/lop-tin-chi\/[^/]+\/sinh-vien$/.test(location.pathname);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login', { replace: true });
+  };
+
+  const toggleGroup = (groupLabel: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupLabel]: !prev[groupLabel],
+    }));
   };
 
   return (
@@ -145,21 +215,83 @@ export function AppShell() {
         </div>
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1">
-          {filteredNav.map((item) => (
+          {canViewOverview && (
             <Link
-              key={item.path}
-              to={item.path}
-              title={!sidebarOpen ? item.label : undefined}
+              to={NAV_OVERVIEW.path}
+              title={!sidebarOpen ? NAV_OVERVIEW.label : undefined}
               className={`flex items-center ${sidebarOpen ? 'gap-3 px-3 justify-start' : 'justify-center px-0'} py-2.5 rounded-lg transition-colors text-sm w-full ${
-                location.pathname === item.path
+                location.pathname === NAV_OVERVIEW.path
+                  ? 'bg-[#009dd9] text-white'
+                  : 'text-foreground hover:bg-[#009dd9]/5 hover:text-[#009dd9]'
+              }`}
+            >
+              <div className="shrink-0">{NAV_OVERVIEW.icon}</div>
+              {sidebarOpen && <span className="truncate">{NAV_OVERVIEW.label}</span>}
+            </Link>
+          )}
+
+          {!sidebarOpen && flatNavItems.map((item) => (
+            <Link
+              key={`${item.path}-${item.label}`}
+              to={item.path}
+              title={item.label}
+              className={`flex items-center justify-center px-0 py-2.5 rounded-lg transition-colors text-sm w-full ${
+                location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
                   ? 'bg-[#009dd9] text-white'
                   : 'text-foreground hover:bg-[#009dd9]/5 hover:text-[#009dd9]'
               }`}
             >
               <div className="shrink-0">{item.icon}</div>
-              {sidebarOpen && <span className="truncate">{item.label}</span>}
             </Link>
           ))}
+
+          {sidebarOpen && filteredGroups.map((group) => {
+            const isGroupActive = group.children.some(
+              (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+            );
+            const isExpanded = Boolean(expandedGroups[group.label]);
+            return (
+              <div key={group.label} className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  title={group.label}
+                  className={`w-full flex items-center ${group.icon ? 'gap-2' : 'gap-1'} px-3 py-2 rounded-lg text-xs uppercase tracking-wide font-semibold cursor-pointer ${
+                    isGroupActive ? 'text-[#009dd9] bg-[#009dd9]/5' : 'text-muted-foreground hover:bg-muted/60'
+                  }`}
+                >
+                  {group.icon ? <div className="shrink-0">{group.icon}</div> : null}
+                  <span className="flex-1 text-left leading-4 whitespace-normal break-words">{group.label}</span>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 shrink-0" />
+                  )}
+                </button>
+                {isExpanded && (
+                  <div className="mt-1 ml-3 border-l border-border pl-2 space-y-1">
+                    {group.children.map((item) => {
+                      const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+                      return (
+                        <Link
+                          key={`${group.label}-${item.path}-${item.label}`}
+                          to={item.path}
+                          className={`flex items-center gap-2 px-2 py-2 rounded-md transition-colors text-sm ${
+                            isActive
+                              ? 'bg-[#009dd9] text-white'
+                              : 'text-foreground hover:bg-[#009dd9]/5 hover:text-[#009dd9]'
+                          }`}
+                        >
+                          <div className="shrink-0">{item.icon}</div>
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-3 border-t border-border">
