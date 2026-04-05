@@ -274,22 +274,18 @@ export function CameraPage() {
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            {/* Pagination */}
-            {total > 0 && (
-                <div className="mt-4">
-                    <DataTablePagination
-                        currentPage={currentPage}
-                        lastPage={lastPage}
-                        total={total}
-                        perPage={perPage}
-                        onPageChange={setCurrentPage}
-                        onPerPageChange={(n) => { setPerPage(n); setCurrentPage(1); }}
-                        perPageOptions={[10, 20, 30, 50]}
-                    />
-                </div>
-            )}
+                {/* Pagination */}
+                <DataTablePagination
+                    currentPage={currentPage}
+                    lastPage={lastPage}
+                    total={total}
+                    perPage={perPage}
+                    onPageChange={setCurrentPage}
+                    onPerPageChange={(n) => { setPerPage(n); setCurrentPage(1); }}
+                    perPageOptions={[10, 20, 30, 50]}
+                />
+            </div>
 
             {/* Modal Form */}
             {showModal && (
@@ -378,7 +374,6 @@ export function CameraPage() {
                             <p className="text-sm text-gray-500 mt-2 leading-relaxed">
                                 Bạn có chắc chắn muốn xóa camera <span className="font-semibold text-gray-800">"{deleteModal.cam?.cameraName}"</span>?
                                 <br />
-                                Hành động này không thể hoàn tác.
                             </p>
                         </div>
                         <div className="flex gap-3 mt-8">

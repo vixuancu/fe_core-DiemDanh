@@ -1,12 +1,16 @@
 import { config } from '@/shared/config/env';
-import { getAuthHeaders } from '@/features/auth/session';
+import { forceLogout, getAuthHeaders } from '@/features/auth/session';
 import { parseEnvelope, parseListEnvelope } from '@/shared/model/api-error.model';
 import type { ICreditClassService } from './credit-class.service';
 import type {
+  CreditClassStudentImportResult,
+  CreditClassStudent,
+  CreditClassStudentFilter,
   CreditClassFilter,
   CreditClassFormOptions,
   CreateLopTinChiDto,
   LopTinChi,
+  LopTinChiSchedule,
   UpdateLopTinChiDto,
 } from '../types';
 import type { PaginatedResult } from '@/shared/types';
@@ -31,6 +35,24 @@ interface CourseSectionResponse {
   end_time?: string;
   hoc_ky: string;
   si_so: number;
+  schedules?: CourseSectionScheduleResponse[];
+}
+
+interface CourseSectionScheduleResponse {
+  id: number;
+  course_section_id: number;
+  user_id?: number | null;
+  user_full_name?: string | null;
+  day_of_week: number;
+  day_of_week_label?: string;
+  start_period: number;
+  end_period?: number;
+  number_of_periods: number;
+  start_time?: string;
+  end_time?: string;
+  room_id?: number | null;
+  room_name?: string | null;
+  display_text?: string | null;
 }
 
 interface CourseSectionOptionResponse {
@@ -42,6 +64,36 @@ interface CourseSectionFormOptionsResponse {
   courses: CourseSectionOptionResponse[];
   lecturers: CourseSectionOptionResponse[];
   rooms: CourseSectionOptionResponse[];
+}
+
+interface CourseSectionStudentResponse {
+  id: number;
+  student_code: string;
+  full_name: string;
+  administrative_class_name?: string | null;
+}
+
+interface BackendImportError {
+  row: number;
+  field: string;
+  student_code?: string | null;
+  message: string;
+}
+
+interface BackendImportResult {
+  total_rows: number;
+  imported_count: number;
+  failed_count: number;
+  errors: BackendImportError[];
+}
+
+class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
 function mapCourseSection(item: CourseSectionResponse): LopTinChi {
@@ -62,7 +114,49 @@ function mapCourseSection(item: CourseSectionResponse): LopTinChi {
     startTime: item.start_time,
     endTime: item.end_time,
     siSo: item.si_so,
+    schedules: (item.schedules ?? []).map((schedule) => mapCourseSectionSchedule(schedule)),
     // hocKy: item.hoc_ky,
+  };
+}
+
+function mapCourseSectionSchedule(item: CourseSectionScheduleResponse): LopTinChiSchedule {
+  return {
+    id: String(item.id),
+    userId: item.user_id != null ? String(item.user_id) : undefined,
+    userFullName: item.user_full_name ?? undefined,
+    dayOfWeek: item.day_of_week,
+    dayOfWeekLabel: item.day_of_week_label,
+    startPeriod: item.start_period,
+    endPeriod: item.end_period,
+    numberOfPeriods: item.number_of_periods,
+    startTime: item.start_time,
+    endTime: item.end_time,
+    roomId: item.room_id != null ? String(item.room_id) : undefined,
+    roomName: item.room_name ?? undefined,
+    displayText: item.display_text ?? undefined,
+  };
+}
+
+function mapCourseSectionStudent(item: CourseSectionStudentResponse): CreditClassStudent {
+  return {
+    id: String(item.id),
+    maSV: item.student_code,
+    hoTen: item.full_name,
+    lopHanhChinh: item.administrative_class_name || 'Chưa phân lớp',
+  };
+}
+
+function mapImportResult(item: BackendImportResult): CreditClassStudentImportResult {
+  return {
+    totalRows: item.total_rows,
+    importedCount: item.imported_count,
+    failedCount: item.failed_count,
+    errors: item.errors.map((error) => ({
+      row: error.row,
+      field: error.field,
+      studentCode: error.student_code || undefined,
+      message: error.message,
+    })),
   };
 }
 
@@ -77,8 +171,17 @@ function mapCreatePayload(dto: CreateLopTinChiDto) {
     end_date: dto.endDate,
     start_period: dto.startPeriod,
     number_of_periods: dto.numberOfPeriods,
-    start_time: dto.startTime || null,
-    end_time: dto.endTime || null,
+    start_time: null,
+    end_time: null,
+    schedules: dto.schedules?.map((schedule) => ({
+      user_id: Number(schedule.userId ?? dto.giangVienId),
+      day_of_week: schedule.dayOfWeek,
+      start_period: schedule.startPeriod,
+      number_of_periods: schedule.numberOfPeriods,
+      start_time: null,
+      end_time: null,
+      room_id: schedule.roomId ? Number(schedule.roomId) : undefined,
+    })),
   };
 }
 
@@ -93,8 +196,27 @@ function mapUpdatePayload(dto: UpdateLopTinChiDto) {
   if (dto.endDate !== undefined) payload.end_date = dto.endDate;
   if (dto.startPeriod !== undefined) payload.start_period = dto.startPeriod;
   if (dto.numberOfPeriods !== undefined) payload.number_of_periods = dto.numberOfPeriods;
-  if (dto.startTime !== undefined) payload.start_time = dto.startTime || null;
-  if (dto.endTime !== undefined) payload.end_time = dto.endTime || null;
+  payload.start_time = null;
+  payload.end_time = null;
+  if (dto.schedules !== undefined) {
+    payload.schedules = dto.schedules.map((schedule) => {
+      const schedulePayload: Record<string, unknown> = {
+      day_of_week: schedule.dayOfWeek,
+      start_period: schedule.startPeriod,
+      number_of_periods: schedule.numberOfPeriods,
+      start_time: null,
+      end_time: null,
+      room_id: schedule.roomId ? Number(schedule.roomId) : undefined,
+      };
+
+      const userId = schedule.userId ?? dto.giangVienId;
+      if (userId !== undefined) {
+        schedulePayload.user_id = Number(userId);
+      }
+
+      return schedulePayload;
+    });
+  }
   return payload;
 }
 
@@ -102,6 +224,7 @@ export const creditClassApi: ICreditClassService = {
   async list(filter: CreditClassFilter): Promise<PaginatedResult<LopTinChi>> {
     const params = new URLSearchParams();
     if (filter.search) params.set('search', filter.search);
+    params.set('is_cancel', String(typeof filter.isCancel === 'boolean' ? filter.isCancel : false));
     params.set('page', String(filter.page ?? 1));
     params.set('page_size', String(filter.perPage ?? 10));
 
@@ -158,5 +281,74 @@ export const creditClassApi: ICreditClassService = {
       lecturers: payload.data.lecturers.map((item) => ({ id: String(item.id), name: item.name })),
       rooms: payload.data.rooms.map((item) => ({ id: String(item.id), name: item.name })),
     };
+  },
+
+  async listStudents(sectionId: string, filter: CreditClassStudentFilter): Promise<PaginatedResult<CreditClassStudent>> {
+    const params = new URLSearchParams();
+    if (filter.search) params.set('search', filter.search);
+    params.set('page', String(filter.page ?? 1));
+    params.set('page_size', String(filter.perPage ?? 10));
+
+    const res = await fetch(`${API_URL}/${sectionId}/students?${params.toString()}`, {
+      headers: getAuthHeaders(),
+    });
+    const payload = await parseListEnvelope<CourseSectionStudentResponse>(res);
+
+    return {
+      data: payload.data.map(mapCourseSectionStudent),
+      total: payload.total,
+      page: payload.page,
+      perPage: payload.page_size,
+      totalPages: payload.total_pages,
+    };
+  },
+
+  async addStudent(sectionId: string, studentId: string): Promise<CreditClassStudent> {
+    const res = await fetch(`${API_URL}/${sectionId}/students`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ student_id: Number(studentId) }),
+    });
+    const payload = await parseEnvelope<CourseSectionStudentResponse>(res);
+    return mapCourseSectionStudent(payload.data);
+  },
+
+  async removeStudent(sectionId: string, studentId: string): Promise<void> {
+    const res = await fetch(`${API_URL}/${sectionId}/students/${studentId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    await parseEnvelope<void>(res);
+  },
+
+  async importStudentsFromExcel(sectionId: string, file: File): Promise<CreditClassStudentImportResult> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    const res = await fetch(`${API_URL}/${sectionId}/students/import`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    const payload = await parseEnvelope<BackendImportResult>(res);
+    return mapImportResult(payload.data);
+  },
+
+  async downloadStudentImportTemplate(sectionId: string): Promise<Blob> {
+    const res = await fetch(`${API_URL}/${sectionId}/students/import/template`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (res.status === 401) {
+      forceLogout();
+      throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+    }
+
+    if (!res.ok) {
+      const payload = (await res.json().catch(() => ({}))) as { message?: string };
+      throw new ApiError(payload.message || 'Tải file mẫu thất bại', res.status);
+    }
+
+    return await res.blob();
   },
 };
