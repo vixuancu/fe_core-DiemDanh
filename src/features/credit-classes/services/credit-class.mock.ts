@@ -2,6 +2,7 @@ import type { ICreditClassService } from './credit-class.service';
 import type {
   LopTinChiBuoiHoc,
   UpdateLopTinChiBuoiHocDto,
+  CreditClassStudentImportResult,
   CreditClassStudent,
   CreditClassStudentFilter,
   CreditClassFilter,
@@ -239,5 +240,37 @@ export const creditClassMock: ICreditClassService = {
       note: dto.note ?? '',
     };
     return sessions[idx];
+  },
+
+  async importStudentsFromExcel(sectionId: string, file: File): Promise<CreditClassStudentImportResult> {
+    await delay(200);
+
+    if (!STORE.some((item) => item.id === sectionId)) {
+      throw new Error('Không tìm thấy lớp tín chỉ');
+    }
+
+    if (!file) {
+      throw new Error('Vui lòng chọn file để import');
+    }
+
+    return {
+      totalRows: 0,
+      importedCount: 0,
+      failedCount: 0,
+      errors: [],
+    };
+  },
+
+  async downloadStudentImportTemplate(sectionId: string): Promise<Blob> {
+    await delay(120);
+
+    if (!STORE.some((item) => item.id === sectionId)) {
+      throw new Error('Không tìm thấy lớp tín chỉ');
+    }
+
+    const content = 'ma_sinh_vien\n';
+    return new Blob([content], {
+      type: 'text/csv;charset=utf-8;',
+    });
   },
 };
