@@ -9,6 +9,7 @@ import {
     PaginationPrevious,
 } from "./pagination";
 import { PortableSelect } from "./portable-form-controls";
+import { useLocation, useNavigate } from 'react-router';
 
 interface DataTablePaginationProps {
     currentPage: number;
@@ -29,11 +30,12 @@ export function DataTablePagination({
     onPerPageChange,
     perPageOptions = [10, 20, 30, 40],
 }: DataTablePaginationProps) {
-
+    const location = useLocation();
+    const navigate = useNavigate();
     const didInitFromUrlRef = React.useRef(false);
 
     const resolvePaginationFromUrl = React.useCallback(() => {
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(location.search);
 
         const rawPerPage = Number(params.get("perPage"));
         const nextPerPage = perPageOptions.includes(rawPerPage) ? rawPerPage : perPage;
@@ -44,19 +46,20 @@ export function DataTablePagination({
         const nextPage = Math.min(normalizedPage, maxPage);
 
         return { nextPage, nextPerPage };
-    }, [lastPage, perPage, perPageOptions]);
+    }, [lastPage, location.search, perPage, perPageOptions]);
 
     const syncUrlParams = (page: number, nextPerPage: number, mode: "push" | "replace" = "push") => {
-        const url = new URL(window.location.href);
-        url.searchParams.set("page", String(page));
-        url.searchParams.set("perPage", String(nextPerPage));
+        const params = new URLSearchParams(location.search);
+        params.set("page", String(page));
+        params.set("perPage", String(nextPerPage));
 
-        const nextUrl = `${url.pathname}?${url.searchParams.toString()}`;
-        if (mode === "replace") {
-            window.history.replaceState(window.history.state, "", nextUrl);
-            return;
-        }
-        window.history.pushState(window.history.state, "", nextUrl);
+        navigate(
+            {
+                pathname: location.pathname,
+                search: `?${params.toString()}`,
+            },
+            { replace: mode === "replace" },
+        );
     };
 
     const handlePageChange = (page: number) => {
@@ -86,17 +89,6 @@ export function DataTablePagination({
         // Ensure URL is normalized on first load.
         syncUrlParams(nextPage, nextPerPage, "replace");
     }, [currentPage, onPageChange, onPerPageChange, perPage, resolvePaginationFromUrl]);
-
-    React.useEffect(() => {
-        const handlePopState = () => {
-            const { nextPage, nextPerPage } = resolvePaginationFromUrl();
-            onPerPageChange(nextPerPage);
-            onPageChange(nextPage);
-        };
-
-        window.addEventListener("popstate", handlePopState);
-        return () => window.removeEventListener("popstate", handlePopState);
-    }, [onPageChange, onPerPageChange, resolvePaginationFromUrl]);
 
     const getVisiblePages = () => {
         const pages: (number | string)[] = [];

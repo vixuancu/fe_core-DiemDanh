@@ -1,6 +1,7 @@
 ﻿import React, { useMemo, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useNavigate } from 'react-router';
 import { PortableSelect } from './ui/portable-form-controls';
 import { useCreditClasses } from '@/features/credit-classes/hooks/useCreditClasses';
 import type { LopTinChi, LopTinChiSchedule } from '@/features/credit-classes/types';
@@ -126,6 +127,7 @@ function getWeekDatesFromStart(startDate: Date) {
 }
 
 export function LichHocPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isGiangVien = user?.role === 'giang_vien';
 
@@ -214,17 +216,25 @@ export function LichHocPage() {
         <div>
           <h2>{isGiangVien ? 'Lịch dạy theo buổi học' : 'Thời khóa biểu buổi học'}</h2>
         </div>
+        {!isGiangVien && (
+          <button
+            onClick={() => navigate('/dieu-chinh')}
+            className="px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] transition-colors"
+          >
+            Điều chỉnh lịch học
+          </button>
+        )}
       </div>
 
       {isError && <ErrorState message={(error as Error)?.message ?? 'Đã xảy ra lỗi khi tải dữ liệu buổi học'} />}
 
       <div className="bg-white rounded-xl p-4 md:p-5 border border-border mb-4 shadow-sm">
-        <div className="flex items-center gap-3 w-full max-w-xl">
-          <label className="text-sm font-medium text-muted-foreground shrink-0">Tuần học:</label>
+        <div className="flex items-center gap-4 w-full max-w-3xl">
+          <label className="text-sm font-medium text-muted-foreground shrink-0 whitespace-nowrap">Tuần học:</label>
           <PortableSelect
             value={selectedWeekIdx}
             onChange={(e) => setSelectedWeekIdx(Number(e.target.value))}
-            className="flex-1 px-3 py-2.5 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9] hover:bg-slate-50 transition-colors cursor-pointer"
+            className="w-full md:w-[21rem] lg:w-[26rem] px-3 py-2.5 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9] hover:bg-slate-50 transition-colors cursor-pointer"
             labelClassName="text-sm"
           >
             {weeksList.map((w, i) => (

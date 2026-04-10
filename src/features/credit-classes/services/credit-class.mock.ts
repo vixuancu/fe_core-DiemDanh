@@ -1,5 +1,8 @@
 import type { ICreditClassService } from './credit-class.service';
 import type {
+  LopTinChiBuoiHoc,
+  UpdateLopTinChiBuoiHocDto,
+  CreditClassStudentImportResult,
   CreditClassStudent,
   CreditClassStudentFilter,
   CreditClassFilter,
@@ -44,6 +47,31 @@ const ENROLLMENTS: Record<string, string[]> = {
   '2': ['4', '5'],
   '3': ['6', '7', '8'],
 };
+
+const SESSIONS_STORE: Record<string, LopTinChiBuoiHoc[]> = {};
+
+function ensureSessionStore(sectionId: string): LopTinChiBuoiHoc[] {
+  if (SESSIONS_STORE[sectionId]) return SESSIONS_STORE[sectionId];
+
+  const section = STORE.find((item) => item.id === sectionId);
+  if (!section) {
+    SESSIONS_STORE[sectionId] = [];
+    return SESSIONS_STORE[sectionId];
+  }
+
+  const data: LopTinChiBuoiHoc[] = (section.schedules ?? []).map((schedule, index) => ({
+    id: `${sectionId}-${index + 1}`,
+    courseSectionId: sectionId,
+    sessionDate: section.startDate,
+    roomId: schedule.roomId,
+    roomName: schedule.roomName,
+    status: 'da_xong',
+    statusLabel: 'Đã xong',
+    note: '',
+  }));
+  SESSIONS_STORE[sectionId] = data;
+  return data;
+}
 
 export const creditClassMock: ICreditClassService = {
   async list({ search = '', page = 1, perPage = 10 }: CreditClassFilter): Promise<PaginatedResult<LopTinChi>> {
@@ -187,5 +215,62 @@ export const creditClassMock: ICreditClassService = {
   async removeStudent(sectionId: string, studentId: string): Promise<void> {
     await delay(150);
     ENROLLMENTS[sectionId] = (ENROLLMENTS[sectionId] ?? []).filter((id) => id !== studentId);
+  },
+
+  async listSessions(sectionId: string): Promise<LopTinChiBuoiHoc[]> {
+    await delay(120);
+    return [...ensureSessionStore(sectionId)];
+  },
+
+  async updateSession(
+    sectionId: string,
+    sessionId: string,
+    dto: UpdateLopTinChiBuoiHocDto,
+  ): Promise<LopTinChiBuoiHoc> {
+    await delay(120);
+    const sessions = ensureSessionStore(sectionId);
+    const idx = sessions.findIndex((item) => item.id === sessionId);
+    if (idx < 0) throw new Error('Không tìm thấy buổi học');
+
+    const statusLabel = dto.status === 'nghi' ? 'Nghỉ' : dto.status === 'bu' ? 'Bù' : 'Đã xong';
+    sessions[idx] = {
+      ...sessions[idx],
+      status: dto.status,
+      statusLabel,
+      note: dto.note ?? '',
+    };
+    return sessions[idx];
+  },
+
+  async importStudentsFromExcel(sectionId: string, file: File): Promise<CreditClassStudentImportResult> {
+    await delay(200);
+
+    if (!STORE.some((item) => item.id === sectionId)) {
+      throw new Error('Không tìm thấy lớp tín chỉ');
+    }
+
+    if (!file) {
+      throw new Error('Vui lòng chọn file để import');
+    }
+
+    return {
+      totalRows: 0,
+      importedCount: 0,
+      failedCount: 0,
+      errors: [],
+    };
+  },
+
+  async downloadStudentImportTemplate(sectionId: string): Promise<Blob> {
+    await delay(120);
+
+    if (!STORE.some((item) => item.id === sectionId)) {
+      throw new Error('Không tìm thấy lớp tín chỉ');
+    }
+
+    const content = 'ma_sinh_vien\n';
+    return new Blob([content], {
+      type: 'text/csv;charset=utf-8;',
+    });
   },
 };

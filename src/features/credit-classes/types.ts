@@ -39,6 +39,26 @@ export interface LopTinChiSchedule {
   displayText?: string;
 }
 
+export type BuoiHocStatus = 'da_xong' | 'nghi' | 'bu';
+
+export interface LopTinChiBuoiHoc {
+  id: string;
+  courseSectionId: string;
+  sessionDate: string;
+  startTime?: string;
+  endTime?: string;
+  roomId?: string;
+  roomName?: string;
+  status: BuoiHocStatus;
+  statusLabel: string;
+  note?: string;
+}
+
+export interface UpdateLopTinChiBuoiHocDto {
+  status: BuoiHocStatus;
+  note?: string;
+}
+
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
 export interface CreateLopTinChiScheduleDto {

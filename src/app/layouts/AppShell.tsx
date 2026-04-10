@@ -81,7 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
     // icon: <CalendarClock className="w-5 h-5" />,
     children: [
       { label: 'Lịch học', path: '/lich-hoc', icon: <CalendarDays className="w-4 h-4" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
-      { label: 'Điều chỉnh lịch học', path: '/lich-hoc', icon: <CalendarClock className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+      { label: 'Điều chỉnh lịch học', path: '/dieu-chinh', icon: <CalendarClock className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
     ],
   },
   {
@@ -128,6 +128,9 @@ const TAB_META: Record<string, TabMeta> = {
   '/lich-hoc': {
     title: 'Lịch dạy'
   },
+  '/dieu-chinh': {
+    title: 'Điều chỉnh lịch học'
+  },
   '/diem-danh': {
     title: 'Điểm danh'
   },
@@ -163,6 +166,13 @@ function getTabMeta(pathname: string): TabMeta {
 
   const matchedPath = Object.keys(TAB_META).find((path) => pathname.startsWith(path));
   return matchedPath ? TAB_META[matchedPath] : { title: 'Trang hiện tại' };
+}
+
+function getBestMatchedPath(paths: string[], pathname: string): string | null {
+  const matched = paths
+    .filter((path) => pathname === path || pathname.startsWith(`${path}/`))
+    .sort((a, b) => b.length - a.length);
+  return matched[0] ?? null;
 }
 
 // ─── AppShell ───────────────────────────────────────────────────────────────
@@ -246,9 +256,11 @@ export function AppShell() {
           ))}
 
           {sidebarOpen && filteredGroups.map((group) => {
-            const isGroupActive = group.children.some(
-              (item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
+            const groupActivePath = getBestMatchedPath(
+              group.children.map((item) => item.path),
+              location.pathname,
             );
+            const isGroupActive = Boolean(groupActivePath);
             const isExpanded = Boolean(expandedGroups[group.label]);
             return (
               <div key={group.label} className="pt-1">
@@ -271,7 +283,7 @@ export function AppShell() {
                 {isExpanded && (
                   <div className="mt-1 ml-3 border-l border-border pl-2 space-y-1">
                     {group.children.map((item) => {
-                      const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+                      const isActive = groupActivePath === item.path;
                       return (
                         <Link
                           key={`${group.label}-${item.path}-${item.label}`}
