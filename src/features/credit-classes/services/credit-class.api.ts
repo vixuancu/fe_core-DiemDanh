@@ -3,6 +3,8 @@ import { forceLogout, getAuthHeaders } from '@/features/auth/session';
 import { parseEnvelope, parseListEnvelope } from '@/shared/model/api-error.model';
 import type { ICreditClassService } from './credit-class.service';
 import type {
+  LopTinChiBuoiHoc,
+  UpdateLopTinChiBuoiHocDto,
   CreditClassStudentImportResult,
   CreditClassStudent,
   CreditClassStudentFilter,
@@ -87,6 +89,26 @@ interface BackendImportResult {
   errors: BackendImportError[];
 }
 
+interface CourseSectionSessionResponse {
+  id: number;
+  course_section_id: number;
+  session_date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  room_id?: number | null;
+  room_name?: string | null;
+  status: number;
+  status_label: string;
+  note?: string | null;
+}
+
+interface CourseSectionSessionUpdateResponse {
+  id: number;
+  status: number;
+  status_label: string;
+  note?: string | null;
+}
+
 class ApiError extends Error {
   status: number;
 
@@ -157,6 +179,47 @@ function mapImportResult(item: BackendImportResult): CreditClassStudentImportRes
       studentCode: error.student_code || undefined,
       message: error.message,
     })),
+  };
+}
+
+function mapSessionStatus(value: number): LopTinChiBuoiHoc['status'] {
+  if (value === 2) return 'da_xong';
+  if (value === 3) return 'nghi';
+  if (value === 4) return 'bu';
+  return 'da_xong';
+}
+
+function toSessionStatusCode(value: UpdateLopTinChiBuoiHocDto['status']): number {
+  if (value === 'da_xong') return 2;
+  if (value === 'nghi') return 3;
+  return 4;
+}
+
+function mapCourseSectionSession(item: CourseSectionSessionResponse): LopTinChiBuoiHoc {
+  return {
+    id: String(item.id),
+    courseSectionId: String(item.course_section_id),
+    sessionDate: item.session_date,
+    startTime: item.start_time ?? undefined,
+    endTime: item.end_time ?? undefined,
+    roomId: item.room_id != null ? String(item.room_id) : undefined,
+    roomName: item.room_name ?? undefined,
+    status: mapSessionStatus(item.status),
+    statusLabel: item.status_label,
+    note: item.note ?? undefined,
+  };
+}
+
+function mapUpdatedSession(
+  base: LopTinChiBuoiHoc,
+  item: CourseSectionSessionUpdateResponse,
+): LopTinChiBuoiHoc {
+  return {
+    ...base,
+    id: String(item.id),
+    status: mapSessionStatus(item.status),
+    statusLabel: item.status_label,
+    note: item.note ?? undefined,
   };
 }
 
@@ -319,6 +382,46 @@ export const creditClassApi: ICreditClassService = {
       headers: getAuthHeaders(),
     });
     await parseEnvelope<void>(res);
+  },
+
+  async listSessions(sectionId: string): Promise<LopTinChiBuoiHoc[]> {
+    const res = await fetch(`${API_URL}/${sectionId}/sessions`, {
+      headers: getAuthHeaders(),
+    });
+    const payload = await parseListEnvelope<CourseSectionSessionResponse>(res);
+    return payload.data.map(mapCourseSectionSession);
+  },
+
+  async updateSession(
+    sectionId: string,
+    sessionId: string,
+    dto: UpdateLopTinChiBuoiHocDto,
+  ): Promise<LopTinChiBuoiHoc> {
+    const list = await this.listSessions(sectionId);
+    const current = list.find((item) => item.id === sessionId);
+
+    const res = await fetch(`${API_URL}/${sectionId}/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        status: toSessionStatusCode(dto.status),
+        note: dto.note ?? null,
+      }),
+    });
+    const payload = await parseEnvelope<CourseSectionSessionUpdateResponse>(res);
+
+    if (!current) {
+      return {
+        id: String(payload.data.id),
+        courseSectionId: String(sectionId),
+        sessionDate: '',
+        status: mapSessionStatus(payload.data.status),
+        statusLabel: payload.data.status_label,
+        note: payload.data.note ?? undefined,
+      };
+    }
+
+    return mapUpdatedSession(current, payload.data);
   },
 
   async importStudentsFromExcel(sectionId: string, file: File): Promise<CreditClassStudentImportResult> {

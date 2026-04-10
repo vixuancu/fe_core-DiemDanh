@@ -5,7 +5,26 @@ import { cn } from './utils';
 type SelectOptionElement = React.ReactElement<React.OptionHTMLAttributes<HTMLOptionElement>>;
 
 function toOptionElements(children: React.ReactNode): SelectOptionElement[] {
-  return React.Children.toArray(children).filter(React.isValidElement) as SelectOptionElement[];
+  const result: SelectOptionElement[] = [];
+
+  const walk = (nodes: React.ReactNode): void => {
+    React.Children.forEach(nodes, (child) => {
+      if (!React.isValidElement(child)) return;
+
+      // Flatten fragments and keep traversing their children.
+      if (child.type === React.Fragment) {
+        walk(child.props.children);
+        return;
+      }
+
+      if (typeof child.type === 'string' && child.type.toLowerCase() === 'option') {
+        result.push(child as SelectOptionElement);
+      }
+    });
+  };
+
+  walk(children);
+  return result;
 }
 
 function getText(node: React.ReactNode): string {

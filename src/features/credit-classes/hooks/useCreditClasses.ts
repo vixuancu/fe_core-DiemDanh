@@ -4,6 +4,7 @@ import type {
   CreditClassStudentImportResult,
   CreditClassFilter,
   CreditClassStudentFilter,
+  UpdateLopTinChiBuoiHocDto,
   CreateLopTinChiDto,
   UpdateLopTinChiDto,
 } from '../types';
@@ -16,6 +17,7 @@ export const creditClassKeys = {
   formOptions: () => [...creditClassKeys.all, 'formOptions'] as const,
   students: (sectionId: string, filter: CreditClassStudentFilter) =>
     [...creditClassKeys.all, 'students', sectionId, filter] as const,
+  sessions: (sectionId: string) => [...creditClassKeys.all, 'sessions', sectionId] as const,
 };
 
 export function useCreditClasses(filter: CreditClassFilter) {
@@ -89,6 +91,38 @@ export function useCreditClassStudents(sectionId: string, filter: CreditClassStu
     queryFn: () => creditClassService.listStudents(sectionId, filter),
     enabled: !!sectionId,
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useCreditClassSessions(sectionId: string) {
+  return useQuery({
+    queryKey: creditClassKeys.sessions(sectionId),
+    queryFn: () => creditClassService.listSessions(sectionId),
+    enabled: !!sectionId,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useUpdateCreditClassSession() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      sectionId,
+      sessionId,
+      dto,
+    }: {
+      sectionId: string;
+      sessionId: string;
+      dto: UpdateLopTinChiBuoiHocDto;
+    }) => creditClassService.updateSession(sectionId, sessionId, dto),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: creditClassKeys.sessions(variables.sectionId) });
+      notify.success('Cập nhật buổi học thành công');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Cập nhật buổi học thất bại';
+      notify.error(message);
+    },
   });
 }
 

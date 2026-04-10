@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router';
 import {
   useCreditClasses,
   useCreditClassFormOptions,
+  useCreditClassSessions,
   useCreateCreditClass,
   useUpdateCreditClass,
+  useUpdateCreditClassSession,
   useDeleteCreditClass,
 } from '@/features/credit-classes/hooks/useCreditClasses';
 import type {
   CreateLopTinChiDto,
   CreateLopTinChiScheduleDto,
+  BuoiHocStatus,
   LopTinChi,
 } from '@/features/credit-classes/types';
 import { Search, Plus, MoreVertical, Loader2, AlertCircle, AlertTriangle, X, CalendarDays, Clock3, MapPin, BookOpenText } from 'lucide-react';
@@ -51,8 +54,58 @@ function resolvePeriodText(
   return `Tiết ${startPeriod}-${finalEndPeriod}`;
 }
 
+const buoiHocStatusOptions: Array<{ value: BuoiHocStatus; label: string }> = [
+  { value: 'da_xong', label: 'Đã xong' },
+  { value: 'nghi', label: 'Nghỉ' },
+  { value: 'bu', label: 'Bù' },
+];
+
+function formatDateTimeLabel(value?: string): string {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+}
+
 function ClassDetailModal({ lop, onClose }: { lop: LopTinChi; onClose: () => void }) {
   const schedules = lop.schedules ?? [];
+  const { data: sessions = [], isLoading: isLoadingSessions } = useCreditClassSessions(lop.id);
+  const { mutate: updateSession, isPending: isUpdatingSession } = useUpdateCreditClassSession();
+  const [editingStatus, setEditingStatus] = useState<Record<string, BuoiHocStatus>>({});
+  const [editingNote, setEditingNote] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const statusMap: Record<string, BuoiHocStatus> = {};
+    const noteMap: Record<string, string> = {};
+    sessions.forEach((session) => {
+      statusMap[session.id] = session.status;
+      noteMap[session.id] = session.note ?? '';
+    });
+    setEditingStatus(statusMap);
+    setEditingNote(noteMap);
+  }, [sessions]);
+
+  const handleSaveSession = (sessionId: string) => {
+    const status = editingStatus[sessionId];
+    if (!status) {
+      notify.error('Vui lòng chọn trạng thái buổi học');
+      return;
+    }
+
+    updateSession({
+      sectionId: lop.id,
+      sessionId,
+      dto: {
+        status,
+        note: editingNote[sessionId] ?? '',
+      },
+    });
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[1100] flex items-center justify-center p-4">
@@ -122,6 +175,77 @@ function ClassDetailModal({ lop, onClose }: { lop: LopTinChi; onClose: () => voi
                       <span className="font-medium text-gray-800">
                         {schedule.userFullName || 'Chưa có giảng viên'}
                       </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-gray-700 text-sm font-medium">
+                <CalendarDays className="w-4 h-4" />
+                Quản lý buổi học đã sinh
+              </div>
+              <span className="text-xs text-gray-500">{sessions.length} buổi</span>
+            </div>
+
+            {isLoadingSessions ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Đang tải danh sách buổi học...</div>
+            ) : sessions.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Chưa có buổi học được sinh tự động.</div>
+            ) : (
+              <div className="space-y-3">
+                {sessions.map((session, index) => (
+                  <div key={session.id} className="rounded-lg border border-border p-3 bg-white">
+                    <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                      <div className="text-sm font-semibold text-gray-800">Buổi {index + 1} - {formatDateTimeLabel(session.sessionDate)}</div>
+                      <span className="text-xs rounded-full px-2 py-1 bg-slate-100 text-slate-700">{session.statusLabel}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="md:col-span-1">
+                        <label className="block mb-1 text-xs text-gray-500">Giờ học</label>
+                        <div className="text-sm text-gray-700">{formatDateTimeLabel(session.startTime)} - {formatDateTimeLabel(session.endTime)}</div>
+                      </div>
+                      <div className="md:col-span-1">
+                        <label className="block mb-1 text-xs text-gray-500">Phòng</label>
+                        <div className="text-sm text-gray-700">{session.roomName || 'Chưa có phòng'}</div>
+                      </div>
+                      <div className="md:col-span-1">
+                        <label className="block mb-1 text-xs text-gray-500">Trạng thái</label>
+                        <PortableSelect
+                          value={editingStatus[session.id] ?? session.status}
+                          onChange={(e) => setEditingStatus((prev) => ({ ...prev, [session.id]: e.target.value as BuoiHocStatus }))}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                          labelClassName="text-sm"
+                        >
+                          {buoiHocStatusOptions.map((item) => (
+                            <option key={item.value} value={item.value}>{item.label}</option>
+                          ))}
+                        </PortableSelect>
+                      </div>
+                      <div className="md:col-span-1">
+                        <label className="block mb-1 text-xs text-gray-500">Ghi chú</label>
+                        <input
+                          value={editingNote[session.id] ?? ''}
+                          onChange={(e) => setEditingNote((prev) => ({ ...prev, [session.id]: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                          placeholder="Nhập ghi chú (nếu có)"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        disabled={isUpdatingSession}
+                        onClick={() => handleSaveSession(session.id)}
+                        className="px-3 py-1.5 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] disabled:opacity-60"
+                      >
+                        Lưu buổi học
+                      </button>
                     </div>
                   </div>
                 ))}

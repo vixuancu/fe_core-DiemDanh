@@ -17,6 +17,7 @@ import { LopTinChiSinhVienPage } from '@/app/components/lop-tin-chi-sinh-vien-pa
 import { HocPhanPage } from '@/app/components/hoc-phan-page';
 import { PhongHocPage } from '@/app/components/phong-hoc-page';
 import { LichHocPage } from '@/app/components/lich-hoc-page';
+import { LichHocDieuChinhPage } from '@/app/components/lich-hoc-dieu-chinh-page';
 import { DiemDanhPage } from '@/app/components/diem-danh-page';
 import { KetQuaDiemDanhPage } from '@/app/components/ket-qua-diem-danh-page';
 import { LichSuPage } from '@/app/components/lich-su-page';
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
               { path: 'lop-tin-chi', element: <LopTinChiPage /> },
               { path: 'lop-tin-chi/:lopTinChiId/sinh-vien', element: <LopTinChiSinhVienPage /> },
               { path: 'phong-hoc', element: <PhongHocPage /> },
+              { path: 'dieu-chinh', element: <LichHocDieuChinhPage /> },
               { path: 'diem-danh', element: <DiemDanhPage /> },
               { path: 'bao-cao', element: <BaoCaoPage /> },
             ],
