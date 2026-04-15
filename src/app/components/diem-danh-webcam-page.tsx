@@ -120,8 +120,8 @@ function resolveBoxFrameClass(state: DrawFaceBox["state"]): string {
 
 function resolveRejectedText(debugReason?: string): string {
   if (debugReason === "not_enrolled_in_session")
-    return "Khong thuoc lop dang diem danh";
-  return "Khong dung SV trong lop";
+    return "Không thuộc lớp đang điểm danh";
+  return "Không đúng SV trong lớp";
 }
 
 function resolveBoxLabelClass(state: DrawFaceBox["state"]): string {
@@ -326,7 +326,7 @@ export function DiemDanhWebcamPage() {
       const key = makeFaceKey(Number(raw.xCenter), Number(raw.yCenter));
       const found = labels.get(key);
       const state: DrawFaceBox["state"] = found?.state ?? "pending";
-      const label = found?.name ?? "Dang xac minh...";
+      const label = found?.name ?? "Đang xác minh...";
       const x = offsetX + drawW - (bb.xCenter + bb.width / 2) * drawW;
 
       boxes.push({
@@ -469,7 +469,7 @@ export function DiemDanhWebcamPage() {
       }
 
       labels.set(key, {
-        name: "Dang xac minh...",
+        name: "Đang xác minh...",
         state: "pending",
         failCount: nextFailCount,
         expiry: now + PENDING_TTL_MS,
