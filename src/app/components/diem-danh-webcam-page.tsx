@@ -1,17 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, Loader2, Play, Square, Wifi, WifiOff } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, Loader2, Play, Square, Wifi, WifiOff } from "lucide-react";
 
-import { useAuth } from '@/features/auth/context/AuthContext';
-import { useCreditClasses, useCreditClassSessions } from '@/features/credit-classes/hooks/useCreditClasses';
+import { useAuth } from "@/features/auth/context/AuthContext";
+import {
+  useCreditClasses,
+  useCreditClassSessions,
+} from "@/features/credit-classes/hooks/useCreditClasses";
 import {
   useRecognizeWebcamFast,
   useStartAttendanceWebcam,
   useStopAttendanceWebcam,
-} from '@/features/attendance-webcam/hooks/useAttendanceWebcam';
-import { attendanceWebcamService } from '@/features/attendance-webcam/services';
-import type { AttendanceWebcamFace } from '@/features/attendance-webcam/types';
-import { notify } from '@/shared/lib/notify';
-import { formatDateVi } from '@/shared/lib/date-time';
+} from "@/features/attendance-webcam/hooks/useAttendanceWebcam";
+import { attendanceWebcamService } from "@/features/attendance-webcam/services";
+import type { AttendanceWebcamFace } from "@/features/attendance-webcam/types";
+import { notify } from "@/shared/lib/notify";
+import { formatDateVi } from "@/shared/lib/date-time";
 
 interface DrawFaceBox {
   id: string;
@@ -20,12 +23,12 @@ interface DrawFaceBox {
   width: number;
   height: number;
   label: string;
-  state: 'recognized' | 'pending' | 'rejected';
+  state: "recognized" | "pending" | "rejected";
 }
 
 interface TrackedFace {
   name: string;
-  state: 'recognized' | 'pending' | 'rejected';
+  state: "recognized" | "pending" | "rejected";
   failCount: number;
   expiry: number;
 }
@@ -69,52 +72,62 @@ function pickTopDetections(detections: any[]): any[] {
   return detections
     .filter((item) => item?.boundingBox)
     .sort((a, b) => {
-      const aa = Number(a.boundingBox.width || 0) * Number(a.boundingBox.height || 0);
-      const bb = Number(b.boundingBox.width || 0) * Number(b.boundingBox.height || 0);
+      const aa =
+        Number(a.boundingBox.width || 0) * Number(a.boundingBox.height || 0);
+      const bb =
+        Number(b.boundingBox.width || 0) * Number(b.boundingBox.height || 0);
       return bb - aa;
     })
     .slice(0, MAX_RECOGNIZE_FACES);
 }
 
-function resolveSessionDateTimeLabel(sessionDate?: string, startTime?: string, endTime?: string): string {
-  const dateLabel = formatDateVi(sessionDate || '');
+function resolveSessionDateTimeLabel(
+  sessionDate?: string,
+  startTime?: string,
+  endTime?: string,
+): string {
+  const dateLabel = formatDateVi(sessionDate || "");
 
   const toHm = (value?: string) => {
-    if (!value) return '--:--';
+    if (!value) return "--:--";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) {
       return value;
     }
-    const h = String(d.getHours()).padStart(2, '0');
-    const m = String(d.getMinutes()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, "0");
+    const m = String(d.getMinutes()).padStart(2, "0");
     return `${h}:${m}`;
   };
 
   return `${dateLabel} (${toHm(startTime)} - ${toHm(endTime)})`;
 }
 
-function mapPeriodToSessionLabel(startPeriod: number, endPeriod: number): string {
-  if (endPeriod <= 5) return 'Sáng';
-  if (endPeriod <= 9) return 'Chiều';
-  if (startPeriod >= 10) return 'Tối';
-  return 'Chiều/Tối';
+function mapPeriodToSessionLabel(
+  startPeriod: number,
+  endPeriod: number,
+): string {
+  if (endPeriod <= 5) return "Sáng";
+  if (endPeriod <= 9) return "Chiều";
+  if (startPeriod >= 10) return "Tối";
+  return "Chiều/Tối";
 }
 
-function resolveBoxFrameClass(state: DrawFaceBox['state']): string {
-  if (state === 'recognized') return 'border-green-500 bg-green-500/15';
-  if (state === 'pending') return 'border-amber-400 bg-amber-400/12';
-  return 'border-red-500 bg-red-500/15';
+function resolveBoxFrameClass(state: DrawFaceBox["state"]): string {
+  if (state === "recognized") return "border-green-500 bg-green-500/15";
+  if (state === "pending") return "border-amber-400 bg-amber-400/12";
+  return "border-red-500 bg-red-500/15";
 }
 
 function resolveRejectedText(debugReason?: string): string {
-  if (debugReason === 'not_enrolled_in_session') return 'Khong thuoc lop dang diem danh';
-  return 'Khong dung SV trong lop';
+  if (debugReason === "not_enrolled_in_session")
+    return "Khong thuoc lop dang diem danh";
+  return "Khong dung SV trong lop";
 }
 
-function resolveBoxLabelClass(state: DrawFaceBox['state']): string {
-  if (state === 'recognized') return 'bg-green-700/90';
-  if (state === 'pending') return 'bg-amber-700/90';
-  return 'bg-red-700/90';
+function resolveBoxLabelClass(state: DrawFaceBox["state"]): string {
+  if (state === "recognized") return "bg-green-700/90";
+  if (state === "pending") return "bg-amber-700/90";
+  return "bg-red-700/90";
 }
 
 export function DiemDanhWebcamPage() {
@@ -124,21 +137,24 @@ export function DiemDanhWebcamPage() {
     () => ({
       page: 1,
       perPage: 100,
-      ...(user?.role === 'giang_vien' ? { giangVienId: user.id } : {}),
+      ...(user?.role === "giang_vien" ? { giangVienId: user.id } : {}),
     }),
     [user?.id, user?.role],
   );
 
-  const { data: creditClassData, isLoading: isLoadingClasses } = useCreditClasses(classFilter);
+  const { data: creditClassData, isLoading: isLoadingClasses } =
+    useCreditClasses(classFilter);
   const creditClasses = creditClassData?.data ?? [];
 
-  const [selectedSectionId, setSelectedSectionId] = useState('');
-  const [selectedSessionId, setSelectedSessionId] = useState('');
-  const [runtimeId, setRuntimeId] = useState('');
+  const [selectedSectionId, setSelectedSectionId] = useState("");
+  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [runtimeId, setRuntimeId] = useState("");
   const [drawBoxes, setDrawBoxes] = useState<DrawFaceBox[]>([]);
-  const [connectionState, setConnectionState] = useState<'active' | 'inactive' | 'waiting'>('waiting');
-  const [connectionText, setConnectionText] = useState('Camera chờ kích hoạt');
-  const [fpsText, setFpsText] = useState('-');
+  const [connectionState, setConnectionState] = useState<
+    "active" | "inactive" | "waiting"
+  >("waiting");
+  const [connectionText, setConnectionText] = useState("Camera chờ kích hoạt");
+  const [fpsText, setFpsText] = useState("-");
   const [lastFaceUpdatedAt, setLastFaceUpdatedAt] = useState(0);
 
   const selectedClass = useMemo(
@@ -146,7 +162,8 @@ export function DiemDanhWebcamPage() {
     [creditClasses, selectedSectionId],
   );
 
-  const { data: sessions = [], isLoading: isLoadingSessions } = useCreditClassSessions(selectedSectionId);
+  const { data: sessions = [], isLoading: isLoadingSessions } =
+    useCreditClassSessions(selectedSectionId);
 
   const selectedSession = useMemo(
     () => sessions.find((item) => item.id === selectedSessionId) ?? null,
@@ -166,33 +183,40 @@ export function DiemDanhWebcamPage() {
   const faceLabelsRef = useRef<Map<string, TrackedFace>>(new Map());
   const scanningRef = useRef(false);
   const mediaPipeReadyRef = useRef(false);
-  const runtimeIdRef = useRef('');
+  const runtimeIdRef = useRef("");
   const fpsCounterRef = useRef({ count: 0, tick: Date.now() });
 
-  const canStart = !!selectedSectionId && !!selectedSessionId && !startMutation.isPending;
+  const canStart =
+    !!selectedSectionId && !!selectedSessionId && !startMutation.isPending;
 
   useEffect(() => {
     if (creditClasses.length === 0) {
-      setSelectedSectionId('');
+      setSelectedSectionId("");
       return;
     }
-    if (!selectedSectionId || !creditClasses.some((item) => item.id === selectedSectionId)) {
+    if (
+      !selectedSectionId ||
+      !creditClasses.some((item) => item.id === selectedSectionId)
+    ) {
       setSelectedSectionId(creditClasses[0].id);
     }
   }, [creditClasses, selectedSectionId]);
 
   useEffect(() => {
     if (sessions.length === 0) {
-      setSelectedSessionId('');
+      setSelectedSessionId("");
       return;
     }
-    if (!selectedSessionId || !sessions.some((item) => item.id === selectedSessionId)) {
+    if (
+      !selectedSessionId ||
+      !sessions.some((item) => item.id === selectedSessionId)
+    ) {
       setSelectedSessionId(sessions[0].id);
     }
   }, [sessions, selectedSessionId]);
 
   useEffect(() => {
-    setSelectedSessionId('');
+    setSelectedSessionId("");
   }, [selectedSectionId]);
 
   useEffect(() => {
@@ -230,16 +254,26 @@ export function DiemDanhWebcamPage() {
     return schedules.find((s) => s.dayOfWeek === weekday) ?? schedules[0];
   }, [selectedClass, selectedSession?.sessionDate]);
 
-  const periodStart = selectedSchedule?.startPeriod ?? selectedClass?.startPeriod ?? 0;
-  const periodEndFromSchedule = selectedSchedule?.endPeriod
-    ?? (selectedSchedule ? selectedSchedule.startPeriod + selectedSchedule.numberOfPeriods - 1 : 0);
-  const periodEnd = periodEndFromSchedule || (selectedClass ? selectedClass.startPeriod + selectedClass.numberOfPeriods - 1 : 0);
+  const periodStart =
+    selectedSchedule?.startPeriod ?? selectedClass?.startPeriod ?? 0;
+  const periodEndFromSchedule =
+    selectedSchedule?.endPeriod ??
+    (selectedSchedule
+      ? selectedSchedule.startPeriod + selectedSchedule.numberOfPeriods - 1
+      : 0);
+  const periodEnd =
+    periodEndFromSchedule ||
+    (selectedClass
+      ? selectedClass.startPeriod + selectedClass.numberOfPeriods - 1
+      : 0);
 
-  const sessionLabel = periodStart > 0 && periodEnd > 0
-    ? `${mapPeriodToSessionLabel(periodStart, periodEnd)} (Tiết ${periodStart}-${periodEnd})`
-    : '-';
+  const sessionLabel =
+    periodStart > 0 && periodEnd > 0
+      ? `${mapPeriodToSessionLabel(periodStart, periodEnd)} (Tiết ${periodStart}-${periodEnd})`
+      : "-";
 
-  const makeFaceKey = (xCenter: number, yCenter: number) => `${Math.round(xCenter * 12)}_${Math.round(yCenter * 12)}`;
+  const makeFaceKey = (xCenter: number, yCenter: number) =>
+    `${Math.round(xCenter * 12)}_${Math.round(yCenter * 12)}`;
 
   const updateFps = () => {
     fpsCounterRef.current.count += 1;
@@ -291,12 +325,13 @@ export function DiemDanhWebcamPage() {
 
       const key = makeFaceKey(Number(raw.xCenter), Number(raw.yCenter));
       const found = labels.get(key);
-      const state: DrawFaceBox['state'] = found?.state ?? 'pending';
-      const label = found?.name ?? 'Dang xac minh...';
+      const state: DrawFaceBox["state"] = found?.state ?? "pending";
+      const label = found?.name ?? "Dang xac minh...";
+      const x = offsetX + drawW - (bb.xCenter + bb.width / 2) * drawW;
 
       boxes.push({
         id: `${i}-${Date.now()}`,
-        left: offsetX + (bb.xCenter - bb.width / 2) * drawW,
+        left: x,
         top: offsetY + (bb.yCenter - bb.height / 2) * drawH,
         width: bb.width * drawW,
         height: bb.height * drawH,
@@ -313,9 +348,9 @@ export function DiemDanhWebcamPage() {
   const loadScriptOnce = async (src: string) => {
     if (document.querySelector(`script[src="${src}"]`)) return;
     await new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
+      const script = document.createElement("script");
       script.src = src;
-      script.crossOrigin = 'anonymous';
+      script.crossOrigin = "anonymous";
       script.async = true;
       script.onload = () => resolve();
       script.onerror = () => reject(new Error(`Cannot load script: ${src}`));
@@ -326,11 +361,15 @@ export function DiemDanhWebcamPage() {
   const ensureMediaPipeReady = async () => {
     if (mediaPipeReadyRef.current) return;
 
-    await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js');
-    await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js');
+    await loadScriptOnce(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js",
+    );
+    await loadScriptOnce(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js",
+    );
 
     if (!(window as any).FaceDetection || !(window as any).Camera) {
-      throw new Error('MediaPipe FaceDetection chưa sẵn sàng');
+      throw new Error("MediaPipe FaceDetection chưa sẵn sàng");
     }
 
     mediaPipeReadyRef.current = true;
@@ -390,15 +429,15 @@ export function DiemDanhWebcamPage() {
 
       if (face?.recognized) {
         labels.set(key, {
-          name: face.full_name || 'Da nhan dien',
-          state: 'recognized',
+          name: face.full_name || "Da nhan dien",
+          state: "recognized",
           failCount: 0,
           expiry: now + LABEL_TTL_MS,
         });
         continue;
       }
 
-      if (prev?.state === 'recognized') {
+      if (prev?.state === "recognized") {
         labels.set(key, {
           ...prev,
           expiry: now + 1200,
@@ -407,11 +446,11 @@ export function DiemDanhWebcamPage() {
       }
 
       const debugReason = face?.debug?.reason;
-      const shouldRejectNow = Boolean(debugReason && debugReason !== 'matched');
+      const shouldRejectNow = Boolean(debugReason && debugReason !== "matched");
       if (shouldRejectNow) {
         labels.set(key, {
           name: resolveRejectedText(debugReason),
-          state: 'rejected',
+          state: "rejected",
           failCount: REJECT_FAIL_THRESHOLD,
           expiry: now + REJECT_TTL_MS,
         });
@@ -422,7 +461,7 @@ export function DiemDanhWebcamPage() {
       if (nextFailCount >= REJECT_FAIL_THRESHOLD) {
         labels.set(key, {
           name: resolveRejectedText(debugReason),
-          state: 'rejected',
+          state: "rejected",
           failCount: nextFailCount,
           expiry: now + REJECT_TTL_MS,
         });
@@ -430,8 +469,8 @@ export function DiemDanhWebcamPage() {
       }
 
       labels.set(key, {
-        name: 'Dang xac minh...',
-        state: 'pending',
+        name: "Dang xac minh...",
+        state: "pending",
         failCount: nextFailCount,
         expiry: now + PENDING_TTL_MS,
       });
@@ -456,7 +495,7 @@ export function DiemDanhWebcamPage() {
     canvas.width = vw;
     canvas.height = vh;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, vw, vh);
 
@@ -489,23 +528,28 @@ export function DiemDanhWebcamPage() {
 
       if (w < 40 || h < 40) continue;
 
-      const cropCanvas = document.createElement('canvas');
+      const cropCanvas = document.createElement("canvas");
       cropCanvas.width = w;
       cropCanvas.height = h;
 
-      const cropCtx = cropCanvas.getContext('2d');
+      const cropCtx = cropCanvas.getContext("2d");
       if (!cropCtx) continue;
 
       cropCtx.drawImage(canvas, x, y, w, h, 0, 0, w, h);
 
       const cropBlob = await new Promise<Blob | null>((resolve) => {
-        cropCanvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.92);
+        cropCanvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
       });
 
       if (!cropBlob) continue;
 
-      cropFiles.push(new File([cropBlob], `face_${i}.jpg`, { type: 'image/jpeg' }));
-      positions.push({ xCenter: Number(raw.xCenter), yCenter: Number(raw.yCenter) });
+      cropFiles.push(
+        new File([cropBlob], `face_${i}.jpg`, { type: "image/jpeg" }),
+      );
+      positions.push({
+        xCenter: Number(raw.xCenter),
+        yCenter: Number(raw.yCenter),
+      });
     }
 
     if (!cropFiles.length) {
@@ -522,32 +566,40 @@ export function DiemDanhWebcamPage() {
 
       updateLabelsFromRecognizeResult(response.faces ?? [], positions);
       drawOverlay(currentDetectionsRef.current);
-      setConnectionState('active');
-      setConnectionText('Webcam đang nhận diện');
+      setConnectionState("active");
+      setConnectionText("Webcam đang nhận diện");
     } catch (error) {
       try {
-        const runtimeStatus = await attendanceWebcamService.status(runtimeIdArg);
-        if (!runtimeStatus.active || runtimeStatus.runtime_id !== runtimeIdArg) {
+        const runtimeStatus =
+          await attendanceWebcamService.status(runtimeIdArg);
+        if (
+          !runtimeStatus.active ||
+          runtimeStatus.runtime_id !== runtimeIdArg
+        ) {
           cleanupRuntime();
-          notify.warning('Phiên điểm danh đã hết hiệu lực, vui lòng bắt đầu lại');
+          notify.warning(
+            "Phiên điểm danh đã hết hiệu lực, vui lòng bắt đầu lại",
+          );
           return;
         }
       } catch (statusError) {
         if (
-          statusError instanceof Error
-          && (
-            statusError.message.includes('runtime_id không hợp lệ')
-            || statusError.message.includes('Runtime hiện tại không phải phiên điểm danh live')
-            || statusError.message.includes('Phiên điểm danh đã hết hiệu lực')
-          )
+          statusError instanceof Error &&
+          (statusError.message.includes("runtime_id không hợp lệ") ||
+            statusError.message.includes(
+              "Runtime hiện tại không phải phiên điểm danh live",
+            ) ||
+            statusError.message.includes("Phiên điểm danh đã hết hiệu lực"))
         ) {
           cleanupRuntime();
-          notify.warning('Phiên điểm danh đã hết hiệu lực, vui lòng bắt đầu lại');
+          notify.warning(
+            "Phiên điểm danh đã hết hiệu lực, vui lòng bắt đầu lại",
+          );
           return;
         }
       }
-      setConnectionState('inactive');
-      setConnectionText('Nhận diện tạm gián đoạn');
+      setConnectionState("inactive");
+      setConnectionText("Nhận diện tạm gián đoạn");
     }
   };
 
@@ -559,13 +611,17 @@ export function DiemDanhWebcamPage() {
     const video = videoRef.current;
 
     if (!video) {
-      throw new Error('Không tìm thấy webcam element');
+      throw new Error("Không tìm thấy webcam element");
     }
 
     mpFaceDetectionRef.current = new FaceDetection({
-      locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${file}`,
+      locateFile: (file: string) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${file}`,
     });
-    mpFaceDetectionRef.current.setOptions({ model: 'short', minDetectionConfidence: 0.5 });
+    mpFaceDetectionRef.current.setOptions({
+      model: "short",
+      minDetectionConfidence: 0.5,
+    });
     mpFaceDetectionRef.current.onResults((results: any) => {
       currentDetectionsRef.current = results?.detections || [];
       drawOverlay(currentDetectionsRef.current);
@@ -587,31 +643,33 @@ export function DiemDanhWebcamPage() {
       void captureWebcamAndRecognize(runtimeIdArg);
     }, 1500);
 
-    setConnectionState('active');
-    setConnectionText('Webcam đã kết nối');
+    setConnectionState("active");
+    setConnectionText("Webcam đã kết nối");
     fpsCounterRef.current = { count: 0, tick: Date.now() };
-    setFpsText('-');
+    setFpsText("-");
   };
 
   const cleanupRuntime = () => {
     stopWebcamLoop();
-    setRuntimeId('');
-    runtimeIdRef.current = '';
-    setConnectionState('waiting');
-    setConnectionText('Camera chờ kích hoạt');
-    setFpsText('-');
+    setRuntimeId("");
+    runtimeIdRef.current = "";
+    setConnectionState("waiting");
+    setConnectionText("Camera chờ kích hoạt");
+    setFpsText("-");
     setLastFaceUpdatedAt(0);
   };
 
   const onStart = async () => {
     if (!selectedSectionId || !selectedSessionId) {
-      notify.warning('Vui lòng chọn lớp và buổi học trước khi bắt đầu điểm danh');
+      notify.warning(
+        "Vui lòng chọn lớp và buổi học trước khi bắt đầu điểm danh",
+      );
       return;
     }
 
     try {
       const data = await startMutation.mutateAsync({
-        mode: 'webcam',
+        mode: "webcam",
         class_session_id: Number(selectedSessionId),
         course_section_id: Number(selectedSectionId),
         rtsp_url: null,
@@ -623,7 +681,11 @@ export function DiemDanhWebcamPage() {
       await startWebcamLoop(data.runtime_id);
     } catch (error) {
       cleanupRuntime();
-      notify.error(error instanceof Error ? error.message : 'Không thể bắt đầu điểm danh webcam');
+      notify.error(
+        error instanceof Error
+          ? error.message
+          : "Không thể bắt đầu điểm danh webcam",
+      );
     }
   };
 
@@ -650,9 +712,13 @@ export function DiemDanhWebcamPage() {
               className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm"
               disabled={isLoadingClasses || !!runtimeId}
             >
-              {creditClasses.length === 0 ? <option value="">Không có lớp học</option> : null}
+              {creditClasses.length === 0 ? (
+                <option value="">Không có lớp học</option>
+              ) : null}
               {creditClasses.map((item) => (
-                <option key={item.id} value={item.id}>{item.tenMonHoc} - {item.maLop}</option>
+                <option key={item.id} value={item.id}>
+                  {item.tenMonHoc} - {item.maLop}
+                </option>
               ))}
             </select>
           </div>
@@ -665,10 +731,16 @@ export function DiemDanhWebcamPage() {
               className="w-full px-3 py-2 rounded-lg border border-border bg-input-background text-sm"
               disabled={!selectedSectionId || isLoadingSessions || !!runtimeId}
             >
-              {sessions.length === 0 ? <option value="">Không có buổi học</option> : null}
+              {sessions.length === 0 ? (
+                <option value="">Không có buổi học</option>
+              ) : null}
               {sessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  {resolveSessionDateTimeLabel(session.sessionDate, session.startTime, session.endTime)}
+                  {resolveSessionDateTimeLabel(
+                    session.sessionDate,
+                    session.startTime,
+                    session.endTime,
+                  )}
                 </option>
               ))}
             </select>
@@ -678,15 +750,17 @@ export function DiemDanhWebcamPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 text-sm">
           <div className="rounded-lg border border-border px-3 py-2">
             <div className="text-xs text-muted-foreground">Lớp học</div>
-            <div>{selectedClass?.maLop || '-'}</div>
+            <div>{selectedClass?.maLop || "-"}</div>
           </div>
           <div className="rounded-lg border border-border px-3 py-2">
             <div className="text-xs text-muted-foreground">Giảng viên</div>
-            <div>{selectedClass?.tenGiangVien || '-'}</div>
+            <div>{selectedClass?.tenGiangVien || "-"}</div>
           </div>
           <div className="rounded-lg border border-border px-3 py-2">
             <div className="text-xs text-muted-foreground">Phòng</div>
-            <div>{selectedSession?.roomName || selectedClass?.tenPhongHoc || '-'}</div>
+            <div>
+              {selectedSession?.roomName || selectedClass?.tenPhongHoc || "-"}
+            </div>
           </div>
           <div className="rounded-lg border border-border px-3 py-2">
             <div className="text-xs text-muted-foreground">Ca / Tiết</div>
@@ -709,7 +783,8 @@ export function DiemDanhWebcamPage() {
             autoPlay
             muted
             playsInline
-            className={`absolute inset-0 w-full h-full object-contain ${runtimeId ? 'block' : 'hidden'}`}
+            className={`absolute inset-0 w-full h-full object-contain ${runtimeId ? "block" : "hidden"}`}
+            style={runtimeId ? { transform: "scaleX(-1)" } : {}}
           />
           <canvas ref={captureCanvasRef} className="hidden" />
 
@@ -725,8 +800,12 @@ export function DiemDanhWebcamPage() {
                   height: `${box.height}px`,
                 }}
               >
-                <div className={`absolute -top-7 left-0 px-2 py-1 rounded text-white text-[11px] font-medium whitespace-nowrap flex items-center gap-1 ${resolveBoxLabelClass(box.state)}`}>
-                  {box.state === 'pending' ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                <div
+                  className={`absolute -top-7 left-0 px-2 py-1 rounded text-white text-[11px] font-medium whitespace-nowrap flex items-center gap-1 ${resolveBoxLabelClass(box.state)}`}
+                >
+                  {box.state === "pending" ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : null}
                   <span>{box.label}</span>
                 </div>
               </div>
@@ -735,7 +814,11 @@ export function DiemDanhWebcamPage() {
 
           <div className="absolute left-0 right-0 bottom-0 text-white px-3 py-2 bg-gradient-to-t from-black/85 to-transparent flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
-              {connectionState === 'active' ? <Wifi className="w-4 h-4 text-green-400" /> : <WifiOff className="w-4 h-4 text-red-400" />}
+              {connectionState === "active" ? (
+                <Wifi className="w-4 h-4 text-green-400" />
+              ) : (
+                <WifiOff className="w-4 h-4 text-red-400" />
+              )}
               <span>{connectionText}</span>
             </div>
             <div>{fpsText}</div>
@@ -748,14 +831,24 @@ export function DiemDanhWebcamPage() {
             disabled={!canStart || !!runtimeId}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition"
           >
-            {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} Bắt đầu điểm danh
+            {startMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}{" "}
+            Bắt đầu điểm danh
           </button>
           <button
             onClick={onStop}
             disabled={!runtimeId || stopMutation.isPending}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition"
           >
-            {stopMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-4 h-4" />} Dừng điểm danh
+            {stopMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Square className="w-4 h-4" />
+            )}{" "}
+            Dừng điểm danh
           </button>
         </div>
       </div>
