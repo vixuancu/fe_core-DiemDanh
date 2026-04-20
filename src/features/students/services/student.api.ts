@@ -1,7 +1,7 @@
-import { config } from '@/shared/config/env';
-import { forceLogout, getAccessToken } from '@/features/auth/session';
-import { toDateInputValue } from '@/shared/lib/date-time';
-import type { IStudentService } from './student.service';
+import { config } from "@/shared/config/env";
+import { forceLogout, getAccessToken } from "@/features/auth/session";
+import { toDateInputValue } from "@/shared/lib/date-time";
+import type { IStudentService } from "./student.service";
 import type {
   CreateSinhVienDto,
   LopHanhChinhOption,
@@ -12,7 +12,7 @@ import type {
   StudentImportResult,
   StudentStats,
   UpdateSinhVienDto,
-} from '../types';
+} from "../types";
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -92,9 +92,11 @@ function mapStudent(item: BackendStudent): SinhVien {
     hoTen: item.full_name,
     ngaySinh: toDateInputValue(item.birth_of_date),
     gioiTinh: item.gender ?? null,
-    lopHanhChinhId: item.administrative_class_id ? String(item.administrative_class_id) : '',
-    lopHanhChinh: item.administrative_class_name || 'Chưa phân lớp',
-    trangThai: item.is_cancel ? 'locked' : 'active',
+    lopHanhChinhId: item.administrative_class_id
+      ? String(item.administrative_class_id)
+      : "",
+    lopHanhChinh: item.administrative_class_name || "Chưa phân lớp",
+    trangThai: item.is_cancel ? "locked" : "active",
     soAnhKhuonMat: item.face_count ?? 0,
   };
 }
@@ -138,25 +140,43 @@ function getAuthHeaders(extra?: HeadersInit): HeadersInit {
 }
 
 async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
-  const payload = (await res.json().catch(() => ({}))) as Partial<ApiEnvelope<T>>;
+  const payload = (await res.json().catch(() => ({}))) as Partial<
+    ApiEnvelope<T>
+  >;
   if (res.status === 401) {
     forceLogout();
-    throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+    throw new ApiError(
+      "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      401,
+    );
   }
   if (!res.ok || !payload.success) {
-    throw new ApiError(payload.message || 'Có lỗi xảy ra từ máy chủ', res.status);
+    throw new ApiError(
+      payload.message || "Có lỗi xảy ra từ máy chủ",
+      res.status,
+    );
   }
   return payload as ApiEnvelope<T>;
 }
 
-async function parseListEnvelope<T>(res: Response): Promise<ApiListEnvelope<T>> {
-  const payload = (await res.json().catch(() => ({}))) as Partial<ApiListEnvelope<T>>;
+async function parseListEnvelope<T>(
+  res: Response,
+): Promise<ApiListEnvelope<T>> {
+  const payload = (await res.json().catch(() => ({}))) as Partial<
+    ApiListEnvelope<T>
+  >;
   if (res.status === 401) {
     forceLogout();
-    throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+    throw new ApiError(
+      "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      401,
+    );
   }
   if (!res.ok || !payload.success) {
-    throw new ApiError(payload.message || 'Có lỗi xảy ra từ máy chủ', res.status);
+    throw new ApiError(
+      payload.message || "Có lỗi xảy ra từ máy chủ",
+      res.status,
+    );
   }
   return payload as ApiListEnvelope<T>;
 }
@@ -164,11 +184,13 @@ async function parseListEnvelope<T>(res: Response): Promise<ApiListEnvelope<T>> 
 export const studentApi: IStudentService = {
   async list(filter: StudentFilter): Promise<PaginatedResult<SinhVien>> {
     const params = new URLSearchParams();
-    if (filter.search) params.set('search', filter.search);
-    if (filter.lopHanhChinhId) params.set('administrative_class_id', filter.lopHanhChinhId);
-    if (filter.trangThai) params.set('is_cancel', String(filter.trangThai === 'locked'));
-    params.set('page', String(filter.page ?? 1));
-    params.set('page_size', String(filter.perPage ?? 10));
+    if (filter.search) params.set("search", filter.search);
+    if (filter.lopHanhChinhId)
+      params.set("administrative_class_id", filter.lopHanhChinhId);
+    if (filter.trangThai)
+      params.set("is_cancel", String(filter.trangThai === "locked"));
+    params.set("page", String(filter.page ?? 1));
+    params.set("page_size", String(filter.perPage ?? 10));
 
     const res = await fetch(`${API_URL}?${params.toString()}`, {
       headers: getAuthHeaders(),
@@ -199,8 +221,8 @@ export const studentApi: IStudentService = {
     };
 
     const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      method: "POST",
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     const payload = await parseEnvelope<BackendStudent>(res);
@@ -211,15 +233,22 @@ export const studentApi: IStudentService = {
     const body: Record<string, unknown> = {
       student_code: dto.maSV,
       full_name: dto.hoTen,
-      birth_of_date: dto.ngaySinh ? `${dto.ngaySinh}T00:00:00` : dto.ngaySinh === '' ? null : undefined,
+      birth_of_date: dto.ngaySinh
+        ? `${dto.ngaySinh}T00:00:00`
+        : dto.ngaySinh === ""
+          ? null
+          : undefined,
       gender: dto.gioiTinh,
-      administrative_class_id: dto.lopHanhChinhId ? Number(dto.lopHanhChinhId) : undefined,
-      is_cancel: dto.trangThai === undefined ? undefined : dto.trangThai === 'locked',
+      administrative_class_id: dto.lopHanhChinhId
+        ? Number(dto.lopHanhChinhId)
+        : undefined,
+      is_cancel:
+        dto.trangThai === undefined ? undefined : dto.trangThai === "locked",
     };
 
     const res = await fetch(`${API_URL}/${id}`, {
-      method: 'PATCH',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      method: "PATCH",
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     const payload = await parseEnvelope<BackendStudent>(res);
@@ -228,7 +257,7 @@ export const studentApi: IStudentService = {
 
   async delete(id: string): Promise<void> {
     const res = await fetch(`${API_URL}/${id}?hard=true`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: getAuthHeaders(),
     });
     await parseEnvelope<null>(res);
@@ -239,16 +268,22 @@ export const studentApi: IStudentService = {
       headers: getAuthHeaders(),
     });
     const payload = await parseListEnvelope<BackendAdministrativeClass>(res);
-    return payload.data.map((item) => ({ id: String(item.id), name: item.name }));
+    return payload.data.map((item) => ({
+      id: String(item.id),
+      name: item.name,
+    }));
   },
 
-  async getStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>): Promise<StudentStats> {
+  async getStats(
+    filter: Pick<StudentFilter, "search" | "lopHanhChinhId">,
+  ): Promise<StudentStats> {
     const params = new URLSearchParams();
-    if (filter.search) params.set('search', filter.search);
-    if (filter.lopHanhChinhId) params.set('administrative_class_id', filter.lopHanhChinhId);
+    if (filter.search) params.set("search", filter.search);
+    if (filter.lopHanhChinhId)
+      params.set("administrative_class_id", filter.lopHanhChinhId);
 
     const query = params.toString();
-    const res = await fetch(`${API_URL}/stats${query ? `?${query}` : ''}`, {
+    const res = await fetch(`${API_URL}/stats${query ? `?${query}` : ""}`, {
       headers: getAuthHeaders(),
     });
     const payload = await parseEnvelope<BackendStudentStats>(res);
@@ -257,10 +292,10 @@ export const studentApi: IStudentService = {
 
   async importFromExcel(file: File): Promise<StudentImportResult> {
     const formData = new FormData();
-    formData.append('file', file, file.name);
+    formData.append("file", file, file.name);
 
     const res = await fetch(`${API_URL}/import`, {
-      method: 'POST',
+      method: "POST",
       headers: getAuthHeaders(),
       body: formData,
     });
@@ -274,11 +309,19 @@ export const studentApi: IStudentService = {
     });
     if (res.status === 401) {
       forceLogout();
-      throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+      throw new ApiError(
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+        401,
+      );
     }
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { message?: string };
-      throw new ApiError(payload.message || 'Tải file mẫu thất bại', res.status);
+      const payload = (await res.json().catch(() => ({}))) as {
+        message?: string;
+      };
+      throw new ApiError(
+        payload.message || "Tải file mẫu thất bại",
+        res.status,
+      );
     }
     return await res.blob();
   },
@@ -293,8 +336,8 @@ export const studentApi: IStudentService = {
 
   async addFace(studentId: string, imageUrl: string): Promise<StudentFaceItem> {
     const res = await fetch(`${API_URL}/${studentId}/faces`, {
-      method: 'POST',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      method: "POST",
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ image_url: imageUrl }),
     });
     const payload = await parseEnvelope<BackendFace>(res);
@@ -303,9 +346,20 @@ export const studentApi: IStudentService = {
 
   async deleteFace(studentId: string, faceId: string): Promise<void> {
     const res = await fetch(`${API_URL}/${studentId}/faces/${faceId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: getAuthHeaders(),
     });
     await parseEnvelope<null>(res);
+  },
+  async uploadFaceFiles(studentId: string, files: File[]): Promise<any> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+    const res = await fetch(`${API_URL}/${studentId}/faces/upload`, {
+      method: "POST",
+      headers: getAuthHeaders(), // KHÔNG set Content-Type, để browser tự set
+      body: formData,
+    });
+    const payload = await parseEnvelope<any>(res);
+    return payload.data;
   },
 };

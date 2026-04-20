@@ -11,6 +11,7 @@ import {
   useStudentFaces,
   useStudents,
   useUpdateStudent,
+  useUploadStudentFaces,
 } from '@/features/students/hooks/useStudents';
 import type {
   CreateSinhVienDto,
@@ -592,6 +593,7 @@ export function SinhVienPage() {
   const deleteMutation = useDeleteStudent();
   const importMutation = useImportStudents();
   const addFaceMutation = useAddStudentFace();
+  const uploadFacesMutation = useUploadStudentFaces();
   const deleteFaceMutation = useDeleteStudentFace();
   const {
     data: editingFaces = [],
@@ -698,31 +700,25 @@ export function SinhVienPage() {
       return;
     }
 
-    const remaining = Math.max(0, MAX_FACE_FILES - editingFaces.length);
-    if (remaining === 0) {
+    if (imageFiles.length > MAX_FACE_FILES) {
       setFormError(`Tối đa ${MAX_FACE_FILES} ảnh khuôn mặt`);
       return;
     }
 
-    const selected = imageFiles.slice(0, remaining);
     try {
-      const pending = await makePendingFaces(selected);
-      const results = await Promise.allSettled(
-        pending.map((item) =>
-          addFaceMutation.mutateAsync({
-            studentId: editingId,
-            imageUrl: item.imageData,
-          })
-        )
-      );
-      const failed = results.filter((result) => result.status === 'rejected').length;
-      if (failed > 0) {
-        setFormError(`Có ${failed} ảnh tải lên thất bại`);
-      } else {
-        setFormError('');
+      // Xóa toàn bộ ảnh cũ trước
+      if (editingFaces.length > 0) {
+        await Promise.allSettled(
+          editingFaces.map(face =>
+            deleteFaceMutation.mutateAsync({ studentId: editingId, faceId: face.id })
+          )
+        );
       }
-    } catch {
-      setFormError('Không thể đọc dữ liệu ảnh');
+      // Upload và train embedding từ các ảnh mới
+      await uploadFacesMutation.mutateAsync({ studentId: editingId, files: imageFiles });
+      setFormError('');
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Upload ảnh khuôn mặt thất bại');
     }
   };
 
