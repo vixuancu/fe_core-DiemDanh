@@ -8,7 +8,7 @@ import type {
   StudentImportResult,
   StudentStats,
   PaginatedResult,
-} from '../types';
+} from "../types";
 
 /**
  * IStudentService — Contract mà cả mock và API đều phải implement.
@@ -35,13 +35,18 @@ export interface IStudentService {
   /** Lấy danh sách tên lớp (để render filter dropdown) */
   getLopOptions(): Promise<LopHanhChinhOption[]>;
 
-  getStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>): Promise<StudentStats>;
+  getStats(
+    filter: Pick<StudentFilter, "search" | "lopHanhChinhId">,
+  ): Promise<StudentStats>;
 
   listFaces(studentId: string): Promise<StudentFaceItem[]>;
 
   addFace(studentId: string, imageUrl: string): Promise<StudentFaceItem>;
 
   deleteFace(studentId: string, faceId: string): Promise<void>;
+
+  /** Upload nhiều file ảnh khuôn mặt (và train embedding) */
+  uploadFaceFiles(studentId: string, files: File[]): Promise<any>;
 
   /** Import danh sách từ file Excel */
   importFromExcel(file: File): Promise<StudentImportResult>;

@@ -1,25 +1,49 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { studentService } from '../services';
+/** Upload nhiều file ảnh khuôn mặt (và train embedding) */
+export function useUploadStudentFaces() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, files }: { studentId: string; files: File[] }) =>
+      studentService.uploadFaceFiles(studentId, files),
+    onSuccess: (_data, { studentId }) => {
+      queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
+      queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
+      notify.success("Đã upload và train embedding thành công");
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Upload ảnh khuôn mặt thất bại";
+      notify.error(message);
+    },
+  });
+}
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { studentService } from "../services";
 import type {
   StudentFilter,
   CreateSinhVienDto,
   StudentImportResult,
   StudentStats,
   UpdateSinhVienDto,
-} from '../types';
-import { notify } from '@/shared/lib/notify';
+} from "../types";
+import { notify } from "@/shared/lib/notify";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 // Đặt tập trung để invalidate dễ dàng
 
 export const studentKeys = {
-  all: ['students'] as const,
-  lists: () => [...studentKeys.all, 'list'] as const,
+  all: ["students"] as const,
+  lists: () => [...studentKeys.all, "list"] as const,
   list: (filter: StudentFilter) => [...studentKeys.lists(), filter] as const,
-  stats: (filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>) => [...studentKeys.all, 'stats', filter] as const,
-  detail: (id: string) => [...studentKeys.all, 'detail', id] as const,
-  faces: (id: string) => [...studentKeys.all, 'faces', id] as const,
-  classOptions: () => [...studentKeys.all, 'class-options'] as const,
+  stats: (filter: Pick<StudentFilter, "search" | "lopHanhChinhId">) =>
+    [...studentKeys.all, "stats", filter] as const,
+  detail: (id: string) => [...studentKeys.all, "detail", id] as const,
+  faces: (id: string) => [...studentKeys.all, "faces", id] as const,
+  classOptions: () => [...studentKeys.all, "class-options"] as const,
 };
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -56,7 +80,9 @@ export function useLopOptions() {
   });
 }
 
-export function useStudentStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>) {
+export function useStudentStats(
+  filter: Pick<StudentFilter, "search" | "lopHanhChinhId">,
+) {
   return useQuery({
     queryKey: studentKeys.stats(filter),
     queryFn: () => studentService.getStats(filter),
@@ -81,12 +107,15 @@ export function useCreateStudent() {
     mutationFn: (dto: CreateSinhVienDto) => studentService.create(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
       queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
-      notify.success('Thêm sinh viên thành công');
+      notify.success("Thêm sinh viên thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Thêm sinh viên thất bại';
+      const message =
+        error instanceof Error ? error.message : "Thêm sinh viên thất bại";
       notify.error(message);
     },
   });
@@ -100,12 +129,15 @@ export function useUpdateStudent() {
       studentService.update(id, dto),
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
       queryClient.invalidateQueries({ queryKey: studentKeys.detail(id) });
-      notify.success('Cập nhật sinh viên thành công');
+      notify.success("Cập nhật sinh viên thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Cập nhật sinh viên thất bại';
+      const message =
+        error instanceof Error ? error.message : "Cập nhật sinh viên thất bại";
       notify.error(message);
     },
   });
@@ -118,11 +150,14 @@ export function useDeleteStudent() {
     mutationFn: (id: string) => studentService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
-      notify.success('Xóa sinh viên thành công');
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
+      notify.success("Xóa sinh viên thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Xóa sinh viên thất bại';
+      const message =
+        error instanceof Error ? error.message : "Xóa sinh viên thất bại";
       notify.error(message);
     },
   });
@@ -131,16 +166,24 @@ export function useDeleteStudent() {
 export function useAddStudentFace() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ studentId, imageUrl }: { studentId: string; imageUrl: string }) =>
-      studentService.addFace(studentId, imageUrl),
+    mutationFn: ({
+      studentId,
+      imageUrl,
+    }: {
+      studentId: string;
+      imageUrl: string;
+    }) => studentService.addFace(studentId, imageUrl),
     onSuccess: (_data, { studentId }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
-      notify.success('Đã thêm ảnh khuôn mặt');
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
+      notify.success("Đã thêm ảnh khuôn mặt");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Thêm ảnh khuôn mặt thất bại';
+      const message =
+        error instanceof Error ? error.message : "Thêm ảnh khuôn mặt thất bại";
       notify.error(message);
     },
   });
@@ -149,16 +192,24 @@ export function useAddStudentFace() {
 export function useDeleteStudentFace() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ studentId, faceId }: { studentId: string; faceId: string }) =>
-      studentService.deleteFace(studentId, faceId),
+    mutationFn: ({
+      studentId,
+      faceId,
+    }: {
+      studentId: string;
+      faceId: string;
+    }) => studentService.deleteFace(studentId, faceId),
     onSuccess: (_data, { studentId }) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
-      notify.success('Đã xóa ảnh khuôn mặt');
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
+      notify.success("Đã xóa ảnh khuôn mặt");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Xóa ảnh khuôn mặt thất bại';
+      const message =
+        error instanceof Error ? error.message : "Xóa ảnh khuôn mặt thất bại";
       notify.error(message);
     },
   });
@@ -171,16 +222,21 @@ export function useImportStudents() {
     mutationFn: (file: File) => studentService.importFromExcel(file),
     onSuccess: (result: StudentImportResult) => {
       queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...studentKeys.all, 'stats'] });
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
       queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
       if (result.failedCount > 0) {
-        notify.warning(`Đã import ${result.importedCount}/${result.totalRows} dòng`);
+        notify.warning(
+          `Đã import ${result.importedCount}/${result.totalRows} dòng`,
+        );
       } else {
         notify.success(`Import thành công ${result.importedCount} dòng`);
       }
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Import sinh viên thất bại';
+      const message =
+        error instanceof Error ? error.message : "Import sinh viên thất bại";
       notify.error(message);
     },
   });
@@ -189,9 +245,9 @@ export function useImportStudents() {
 export async function downloadStudentImportTemplate() {
   const blob = await studentService.downloadImportTemplate();
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
-  link.download = 'student_import_template.xlsx';
+  link.download = "student_import_template.xlsx";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
