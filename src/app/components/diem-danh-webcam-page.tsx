@@ -8,6 +8,7 @@ import {
   useStartAttendanceWebcam,
   useStopAttendanceWebcam,
 } from '@/features/attendance-webcam/hooks/useAttendanceWebcam';
+import { attendanceWebcamService } from '@/features/attendance-webcam/services';
 import type { AttendanceWebcamFace } from '@/features/attendance-webcam/types';
 import { notify } from '@/shared/lib/notify';
 import { formatDateVi } from '@/shared/lib/date-time';
@@ -19,15 +20,61 @@ interface DrawFaceBox {
   width: number;
   height: number;
   label: string;
-  state: 'recognized' | 'unknown';
+  state: 'recognized' | 'pending' | 'rejected';
 }
 
-interface LabeledFace {
+interface TrackedFace {
   name: string;
+  state: 'recognized' | 'pending' | 'rejected';
+  failCount: number;
   expiry: number;
 }
 
 const LABEL_TTL_MS = 5000;
+const PENDING_TTL_MS = 2600;
+const REJECT_TTL_MS = 2200;
+const REJECT_FAIL_THRESHOLD = 2;
+const MAX_RECOGNIZE_FACES = 3;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function expandFaceBoxNormalized(
+  bb: { xCenter: number; yCenter: number; width: number; height: number },
+  options?: {
+    padX?: number;
+    padTop?: number;
+    padBottom?: number;
+  },
+) {
+  const padX = options?.padX ?? 0.22;
+  const padTop = options?.padTop ?? 0.5;
+  const padBottom = options?.padBottom ?? 0.2;
+
+  const left = clamp(bb.xCenter - bb.width * (0.5 + padX), 0, 1);
+  const right = clamp(bb.xCenter + bb.width * (0.5 + padX), 0, 1);
+  const top = clamp(bb.yCenter - bb.height * (0.5 + padTop), 0, 1);
+  const bottom = clamp(bb.yCenter + bb.height * (0.5 + padBottom), 0, 1);
+
+  return {
+    xCenter: (left + right) / 2,
+    yCenter: (top + bottom) / 2,
+    width: Math.max(0, right - left),
+    height: Math.max(0, bottom - top),
+  };
+}
+
+function pickTopDetections(detections: any[]): any[] {
+  return detections
+    .filter((item) => item?.boundingBox)
+    .sort((a, b) => {
+      const aa = Number(a.boundingBox.width || 0) * Number(a.boundingBox.height || 0);
+      const bb = Number(b.boundingBox.width || 0) * Number(b.boundingBox.height || 0);
+      return bb - aa;
+    })
+    .slice(0, MAX_RECOGNIZE_FACES);
+}
 
 function resolveSessionDateTimeLabel(sessionDate?: string, startTime?: string, endTime?: string): string {
   const dateLabel = formatDateVi(sessionDate || '');
@@ -51,6 +98,18 @@ function mapPeriodToSessionLabel(startPeriod: number, endPeriod: number): string
   if (endPeriod <= 9) return 'Chiều';
   if (startPeriod >= 10) return 'Tối';
   return 'Chiều/Tối';
+}
+
+function resolveBoxFrameClass(state: DrawFaceBox['state']): string {
+  if (state === 'recognized') return 'border-green-500 bg-green-500/15';
+  if (state === 'pending') return 'border-amber-400 bg-amber-400/12';
+  return 'border-red-500 bg-red-500/15';
+}
+
+function resolveBoxLabelClass(state: DrawFaceBox['state']): string {
+  if (state === 'recognized') return 'bg-green-700/90';
+  if (state === 'pending') return 'bg-amber-700/90';
+  return 'bg-red-700/90';
 }
 
 export function DiemDanhWebcamPage() {
@@ -99,7 +158,7 @@ export function DiemDanhWebcamPage() {
   const mpFaceDetectionRef = useRef<any>(null);
   const mpCameraRef = useRef<any>(null);
   const currentDetectionsRef = useRef<any[]>([]);
-  const faceLabelsRef = useRef<Map<string, LabeledFace>>(new Map());
+  const faceLabelsRef = useRef<Map<string, TrackedFace>>(new Map());
   const scanningRef = useRef(false);
   const mediaPipeReadyRef = useRef(false);
   const runtimeIdRef = useRef('');
@@ -171,7 +230,7 @@ export function DiemDanhWebcamPage() {
     ? `${mapPeriodToSessionLabel(periodStart, periodEnd)} (Tiết ${periodStart}-${periodEnd})`
     : '-';
 
-  const makeFaceKey = (xCenter: number, yCenter: number) => `${Math.round(xCenter * 16)}_${Math.round(yCenter * 16)}`;
+  const makeFaceKey = (xCenter: number, yCenter: number) => `${Math.round(xCenter * 12)}_${Math.round(yCenter * 12)}`;
 
   const updateFps = () => {
     fpsCounterRef.current.count += 1;
@@ -211,12 +270,20 @@ export function DiemDanhWebcamPage() {
 
     const boxes: DrawFaceBox[] = [];
     for (let i = 0; i < detections.length; i += 1) {
-      const bb = detections[i]?.boundingBox;
+      const raw = detections[i]?.boundingBox;
+      if (!raw) continue;
+      const bb = expandFaceBoxNormalized({
+        xCenter: Number(raw.xCenter),
+        yCenter: Number(raw.yCenter),
+        width: Number(raw.width),
+        height: Number(raw.height),
+      });
       if (!bb) continue;
 
-      const key = makeFaceKey(Number(bb.xCenter), Number(bb.yCenter));
+      const key = makeFaceKey(Number(raw.xCenter), Number(raw.yCenter));
       const found = labels.get(key);
-      const state: DrawFaceBox['state'] = found ? 'recognized' : 'unknown';
+      const state: DrawFaceBox['state'] = found?.state ?? 'pending';
+      const label = found?.name ?? 'Dang xac minh...';
 
       boxes.push({
         id: `${i}-${Date.now()}`,
@@ -224,7 +291,7 @@ export function DiemDanhWebcamPage() {
         top: offsetY + (bb.yCenter - bb.height / 2) * drawH,
         width: bb.width * drawW,
         height: bb.height * drawH,
-        label: found ? found.name : 'Chưa nhận dạng',
+        label,
         state,
       });
     }
@@ -304,14 +371,48 @@ export function DiemDanhWebcamPage() {
     const now = Date.now();
     const labels = faceLabelsRef.current;
 
-    for (let i = 0; i < faces.length; i += 1) {
+    for (let i = 0; i < positions.length; i += 1) {
       const face = faces[i];
       const pos = positions[i];
-      if (!pos || !face.recognized) continue;
+      if (!pos) continue;
 
-      labels.set(makeFaceKey(pos.xCenter, pos.yCenter), {
-        name: face.full_name || 'Unknown',
-        expiry: now + LABEL_TTL_MS,
+      const key = makeFaceKey(pos.xCenter, pos.yCenter);
+      const prev = labels.get(key);
+
+      if (face?.recognized) {
+        labels.set(key, {
+          name: face.full_name || 'Da nhan dien',
+          state: 'recognized',
+          failCount: 0,
+          expiry: now + LABEL_TTL_MS,
+        });
+        continue;
+      }
+
+      if (prev?.state === 'recognized') {
+        labels.set(key, {
+          ...prev,
+          expiry: now + 1200,
+        });
+        continue;
+      }
+
+      const nextFailCount = (prev?.failCount ?? 0) + 1;
+      if (nextFailCount >= REJECT_FAIL_THRESHOLD) {
+        labels.set(key, {
+          name: 'Khong dung SV trong lop',
+          state: 'rejected',
+          failCount: nextFailCount,
+          expiry: now + REJECT_TTL_MS,
+        });
+        continue;
+      }
+
+      labels.set(key, {
+        name: 'Dang xac minh...',
+        state: 'pending',
+        failCount: nextFailCount,
+        expiry: now + PENDING_TTL_MS,
       });
     }
   };
@@ -323,7 +424,7 @@ export function DiemDanhWebcamPage() {
     const canvas = captureCanvasRef.current;
     if (!video || !canvas || video.readyState < 2) return;
 
-    const detections = currentDetectionsRef.current;
+    const detections = pickTopDetections(currentDetectionsRef.current);
     if (!detections.length) {
       drawOverlay([]);
       return;
@@ -342,14 +443,23 @@ export function DiemDanhWebcamPage() {
     const positions: Array<{ xCenter: number; yCenter: number }> = [];
 
     for (let i = 0; i < detections.length; i += 1) {
-      const bb = detections[i]?.boundingBox;
-      if (!bb) continue;
+      const raw = detections[i]?.boundingBox;
+      if (!raw) continue;
 
-      const pad = 0.6;
-      const cx = bb.xCenter * vw;
-      const cy = bb.yCenter * vh;
-      const fw = bb.width * vw * (1 + pad);
-      const fh = bb.height * vh * (1 + pad);
+      const expanded = expandFaceBoxNormalized(
+        {
+          xCenter: Number(raw.xCenter),
+          yCenter: Number(raw.yCenter),
+          width: Number(raw.width),
+          height: Number(raw.height),
+        },
+        { padX: 0.26, padTop: 0.55, padBottom: 0.25 },
+      );
+
+      const cx = expanded.xCenter * vw;
+      const cy = expanded.yCenter * vh;
+      const fw = expanded.width * vw;
+      const fh = expanded.height * vh;
 
       const x = Math.max(0, Math.round(cx - fw / 2));
       const y = Math.max(0, Math.round(cy - fh / 2));
@@ -374,7 +484,7 @@ export function DiemDanhWebcamPage() {
       if (!cropBlob) continue;
 
       cropFiles.push(new File([cropBlob], `face_${i}.jpg`, { type: 'image/jpeg' }));
-      positions.push({ xCenter: Number(bb.xCenter), yCenter: Number(bb.yCenter) });
+      positions.push({ xCenter: Number(raw.xCenter), yCenter: Number(raw.yCenter) });
     }
 
     if (!cropFiles.length) {
@@ -393,7 +503,21 @@ export function DiemDanhWebcamPage() {
       drawOverlay(currentDetectionsRef.current);
       setConnectionState('active');
       setConnectionText('Webcam đang nhận diện');
-    } catch {
+    } catch (error) {
+      try {
+        const runtimeStatus = await attendanceWebcamService.status(runtimeIdArg);
+        if (!runtimeStatus.active || runtimeStatus.runtime_id !== runtimeIdArg) {
+          cleanupRuntime();
+          notify.warning('Phiên điểm danh đã hết hiệu lực, vui lòng bắt đầu lại');
+          return;
+        }
+      } catch (statusError) {
+        if (statusError instanceof Error && statusError.message.includes('VALIDATION_ERROR')) {
+          cleanupRuntime();
+          notify.warning('Phiên điểm danh đã hết hiệu lực, vui lòng bắt đầu lại');
+          return;
+        }
+      }
       setConnectionState('inactive');
       setConnectionText('Nhận diện tạm gián đoạn');
     }
@@ -460,6 +584,7 @@ export function DiemDanhWebcamPage() {
     try {
       const data = await startMutation.mutateAsync({
         mode: 'webcam',
+        class_session_id: Number(selectedSessionId),
         rtsp_url: null,
       });
 
@@ -563,7 +688,7 @@ export function DiemDanhWebcamPage() {
             {drawBoxes.map((box) => (
               <div
                 key={box.id}
-                className={`absolute border-2 rounded-md ${box.state === 'recognized' ? 'border-green-500 bg-green-500/15' : 'border-red-500 bg-red-500/15'}`}
+                className={`absolute border-2 rounded-md ${resolveBoxFrameClass(box.state)}`}
                 style={{
                   left: `${box.left}px`,
                   top: `${box.top}px`,
@@ -571,8 +696,9 @@ export function DiemDanhWebcamPage() {
                   height: `${box.height}px`,
                 }}
               >
-                <div className="absolute -top-6 left-0 px-2 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium whitespace-nowrap">
-                  {box.label}
+                <div className={`absolute -top-7 left-0 px-2 py-1 rounded text-white text-[11px] font-medium whitespace-nowrap flex items-center gap-1 ${resolveBoxLabelClass(box.state)}`}>
+                  {box.state === 'pending' ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                  <span>{box.label}</span>
                 </div>
               </div>
             ))}

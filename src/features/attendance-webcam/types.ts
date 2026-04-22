@@ -1,5 +1,6 @@
 export interface AttendanceWebcamStartRequest {
   mode: 'webcam';
+  class_session_id: number;
   rtsp_url?: null;
 }
 
