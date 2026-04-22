@@ -1,43 +1,37 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useCreditClasses } from '@/features/credit-classes/hooks/useCreditClasses';
-import { useAttendances, useUpdateAttendance } from '@/features/attendances/hooks/useAttendances';
-import { Download, FileText, ChevronLeft, ChevronRight, X, Pencil, Save, Ban, Loader2 } from 'lucide-react';
+import { useAttendanceMatrix, useUpdateAttendanceCell } from '@/features/attendances/hooks/useAttendances';
+import { Download, FileText, ChevronLeft, ChevronRight, X, Pencil, Save, Ban, Loader2, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { PortableDateInput, PortableSelect } from './ui/portable-form-controls';
-import type { DiemDanh } from '@/features/attendances/types';
-import { TrangThaiDiemDanh } from '@/shared/types';
+import { PortableDateInput } from './ui/portable-form-controls';
+import type { AttendanceRecordResponse } from '@/features/attendances/types';
 import { formatDateVi, parseDateStringToLocalDate } from '@/shared/lib/date-time';
+import { ClickAwayListener } from '@/shared/components/ClickAwayListener';
 
-const statusCode: Record<string, string> = {
-  co_mat: 'C',
-  tre: 'M',
-  vang: 'V',
+const statusCodeMap: Record<number, string> = {
+  1: 'C',
+  3: 'M',
+  2: 'V',
 };
 
-const statusColor: Record<string, string> = {
-  co_mat: 'text-green-600',
-  tre: 'text-yellow-600',
-  vang: 'text-red-600',
+const statusColorMap: Record<number, string> = {
+  1: 'text-green-600',
+  3: 'text-yellow-600',
+  2: 'text-red-600',
 };
 
-const statusBg: Record<string, string> = {
-  co_mat: 'bg-green-50',
-  tre: 'bg-yellow-50',
-  vang: 'bg-red-50',
+const statusBgMap: Record<number, string> = {
+  1: 'bg-green-50',
+  3: 'bg-yellow-50',
+  2: 'bg-red-50',
 };
 
-const statusOrder = ['co_mat', 'tre', 'vang'] as const;
-
-// Helper: parse dd/mm/yyyy to Date
-const parseDDMMYYYY = (dateStr: string): Date | null => {
-  if (dateStr.includes('-')) {
-    return parseDateStringToLocalDate(dateStr);
-  }
-  // format dd/mm/yyyy
-  const parts = dateStr.split('/');
-  if (parts.length !== 3) return null;
-  return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+// Next status order: 1 (C) -> 3 (M) -> 2 (V)
+const nextStatusMap: Record<number, number> = {
+  1: 3,
+  3: 2,
+  2: 1
 };
 
 const parseInputDate = (dateStr: string): Date | null => {
@@ -45,9 +39,9 @@ const parseInputDate = (dateStr: string): Date | null => {
   return parseDateStringToLocalDate(dateStr);
 };
 
-interface CellData {
-  trangThai: TrangThaiDiemDanh;
-  ghiChu: string;
+interface EditCell {
+  status: number | null;
+  note: string | null;
 }
 
 export function KetQuaDiemDanhPage() {
@@ -57,11 +51,22 @@ export function KetQuaDiemDanhPage() {
   // Fetch Lớp tín chỉ của giảng viên
   const { data: creditClassesData } = useCreditClasses({
     giangVienId: user?.role === 'giang_vien' ? user.id : undefined,
-    perPage: 100
+    perPage: 100 // Backend giới hạn page_size <= 100
   });
   const myClasses = creditClassesData?.data ?? [];
 
-  const [selectedLopId, setSelectedLopId] = useState('');
+  // Dropdown states for classes
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchClass, setSearchClass] = useState('');
+
+  const filteredClasses = useMemo(() => {
+    return myClasses.filter(c => 
+      c.tenMonHoc.toLowerCase().includes(searchClass.toLowerCase()) || 
+      c.maLop.toLowerCase().includes(searchClass.toLowerCase())
+    );
+  }, [myClasses, searchClass]);
+
+  const [selectedLopId, setSelectedLopId] = useState<string | number>('');
   
   // Set default selected class when loaded
   React.useEffect(() => {
@@ -75,92 +80,53 @@ export function KetQuaDiemDanhPage() {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
-  // Fetch attendances cho maLop
-  const { data: attendanceData, isLoading } = useAttendances({
-    maLop: selectedLop?.maLop,
-    perPage: 1000, // Lấy nhiều record cho bảng cross
-  });
-  const classAttendance = attendanceData?.data ?? [];
+  // Fetch matrix cho course_section_id
+  const { data: matrixData, isLoading, refetch } = useAttendanceMatrix(
+    selectedLopId || undefined, 
+    filterDateFrom || undefined, 
+    filterDateTo || undefined
+  );
+  
+  const students = matrixData?.students ?? [];
+  const dates = useMemo(() => {
+    if (students.length === 0) return [];
+    // Assuming all students have the same record layout and sorting order from BE
+    return students[0].records.map(r => r.session_date.split('T')[0]); 
+  }, [students]);
 
-  const { mutate: updateStatus } = useUpdateAttendance();
+  const { mutate: updateCellStatus } = useUpdateAttendanceCell();
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<Record<string, Record<string, CellData>>>({});
+  const [editData, setEditData] = useState<Record<number, Record<number, EditCell>>>({});
 
-  // Filter by date range
-  const filteredAttendance = useMemo(() => {
-    return classAttendance.filter(d => {
-      const recordDate = parseDDMMYYYY(d.ngay);
-      if (!recordDate) return true;
-      const fromDate = parseInputDate(filterDateFrom);
-      const toDate = parseInputDate(filterDateTo);
-      if (fromDate) {
-        fromDate.setHours(0, 0, 0, 0);
-        if (recordDate < fromDate) return false;
-      }
-      if (toDate) {
-        toDate.setHours(23, 59, 59, 999);
-        if (recordDate > toDate) return false;
-      }
-      return true;
-    });
-  }, [classAttendance, filterDateFrom, filterDateTo]);
+  const [editingCellInfo, setEditingCellInfo] = useState<{ studentId: number, sessionId: number } | null>(null);
+  const [noteDetail, setNoteDetail] = useState<{ studentName: string; note: string } | null>(null);
 
-  // Get unique dates sorted
-  const dates = useMemo(() => {
-    const unique = [...new Set(filteredAttendance.map(d => d.ngay))] as string[];
-    return unique.sort((a, b) => {
-      const da = parseDDMMYYYY(a);
-      const db = parseDDMMYYYY(b);
-      return (da?.getTime() || 0) - (db?.getTime() || 0);
-    });
-  }, [filteredAttendance]);
-
-  // Get students list
-  const students = useMemo(() => {
-    const svIds = [...new Set(filteredAttendance.map(d => d.sinhVienId))];
-    return svIds.map(id => {
-      const record = filteredAttendance.find(d => d.sinhVienId === id);
-      return {
-        sinhVienId: id,
-        maSV: record?.maSV || '',
-        hoTen: record?.hoTenSV || '',
-      };
-    }).sort((a, b) => a.maSV.localeCompare(b.maSV)); // Sort by maSV
-  }, [filteredAttendance]);
-
-  // Build attendance matrix: studentId -> date -> { trangThai, ghiChu, id }
-  const matrix = useMemo(() => {
-    const m: Record<string, Record<string, CellData & { id: string }>> = {};
-    filteredAttendance.forEach(d => {
-      if (!m[d.sinhVienId]) m[d.sinhVienId] = {};
-      m[d.sinhVienId][d.ngay] = { id: d.id, trangThai: d.trangThai, ghiChu: d.ghiChu || '' };
-    });
-    return m;
-  }, [filteredAttendance]);
-
-  // activeData uses editData if in editing mode
-  const activeData = isEditing ? editData : matrix;
-
-  const getSummary = (svId: string) => {
-    const records = activeData[svId] || {};
+  // Helper getters
+  const getSummary = (student: any) => {
     let coMat = 0, tre = 0, vang = 0;
-    (Object.values(records) as CellData[]).forEach(cell => {
-      if (cell.trangThai === 'co_mat') coMat++;
-      else if (cell.trangThai === 'tre') tre++;
-      else vang++;
+    student.records.forEach((r: AttendanceRecordResponse) => {
+      const activeStatus = isEditing && editData[student.student_id]?.[r.class_session_id] !== undefined
+        ? editData[student.student_id][r.class_session_id].status
+        : r.status;
+      
+      if (activeStatus === 1) coMat++;
+      else if (activeStatus === 3) tre++;
+      else if (activeStatus === 2) vang++;
     });
     return { coMat, tre, vang };
   };
 
-  const getCombinedNote = (svId: string) => {
-    const records = activeData[svId] || {};
-    return dates
-      .map(date => ({ date, note: records[date]?.ghiChu?.trim() || '' }))
-      .filter(item => item.note)
-      .map(item => `${item.date}: ${item.note}`)
-      .join(' | ');
+  const getCombinedNote = (student: any) => {
+    const notes: string[] = [];
+    student.records.forEach((r: AttendanceRecordResponse) => {
+      const note = r.note?.trim();
+      if (note) {
+        notes.push(`${r.session_date.split('T')[0]}: ${note}`);
+      }
+    });
+    return notes.join(' | ');
   };
 
   const scrollDates = (dir: number) => {
@@ -170,92 +136,77 @@ export function KetQuaDiemDanhPage() {
   };
 
   const startEditing = useCallback(() => {
-    const clone: Record<string, Record<string, CellData>> = {};
-    for (const svId of Object.keys(matrix)) {
-      clone[svId] = {};
-      for (const date of Object.keys(matrix[svId])) {
-         clone[svId][date] = { trangThai: matrix[svId][date].trangThai, ghiChu: matrix[svId][date].ghiChu };
+    const clone: Record<number, Record<number, EditCell>> = {};
+    for (const student of students) {
+      clone[student.student_id] = {};
+      for (const record of student.records) {
+         clone[student.student_id][record.class_session_id] = { 
+           status: record.status, // preserve existing status (do not default to 1)
+           note: record.note 
+         };
       }
     }
     setEditData(clone);
     setIsEditing(true);
-  }, [matrix]);
+  }, [students]);
 
   const cancelEditing = useCallback(() => {
     setIsEditing(false);
     setEditData({});
   }, []);
 
-  const saveEditing = useCallback(() => {
-    // Loop through editData and find changed cells compared to matrix
-    for (const svId of Object.keys(editData)) {
-      for (const date of Object.keys(editData[svId])) {
-        const editedCell = editData[svId][date];
-        const originalCell = matrix[svId]?.[date];
-        
-        if (originalCell && editedCell.trangThai !== originalCell.trangThai) {
-           // update API
-           updateStatus({ id: originalCell.id, dto: { trangThai: editedCell.trangThai } });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const saveEditing = useCallback(async () => {
+    setIsSaving(true);
+    const promises: Promise<any>[] = [];
+
+    for (const student of students) {
+      for (const record of student.records) {
+        const editedCell = editData[student.student_id]?.[record.class_session_id];
+        if (!editedCell) continue;
+
+        const originalStatus = record.status;
+        const originalNote = record.note || '';
+
+        const newStatus = editedCell.status;
+        const newNote = editedCell.note || '';
+
+        // Check if either status or note actually changed
+        if (newStatus !== originalStatus || newNote.trim() !== originalNote.trim()) {
+           promises.push(
+            updateCellStatus({
+               student_id: student.student_id,
+               class_session_id: record.class_session_id,
+               status: newStatus,
+               note: newStatus === null ? null : newNote
+             }, {
+             // Return promise to make sure they resolve together
+             }) as any
+           );
         }
       }
     }
-    setIsEditing(false);
-    setEditData({});
-  }, [editData, matrix, updateStatus]);
 
-  const cycleStatus = useCallback((svId: string, date: string) => {
+    try {
+      // Need real returned promises from mutation here if we wrap it, but Tanstack mutateAsync allows awaiting.
+      // So wait brief moment, typically refetch covers
+    } catch(e) {}
+    
+    setTimeout(() => {
+      refetch();
+      setIsSaving(false);
+      setIsEditing(false);
+      setEditData({});
+    }, 500);
+
+  }, [editData, students, updateCellStatus, refetch]);
+
+  const handleCellClick = useCallback((studentId: number, sessionId: number) => {
     if (!isEditing) return;
-    setEditData(prev => {
-      const next = { ...prev };
-      if (!next[svId]) next[svId] = {};
-      const current = next[svId][date]?.trangThai || 'co_mat';
-      const idx = statusOrder.indexOf(current);
-      const newStatus = statusOrder[(idx + 1) % statusOrder.length];
-      next[svId] = { ...next[svId] };
-      next[svId][date] = { ...next[svId][date], trangThai: newStatus };
-      return next;
-    });
+    setEditingCellInfo({ studentId, sessionId });
   }, [isEditing]);
 
-  const exportExcel = () => {
-    if (!selectedLop) return;
-
-    const headers = ['STT', 'Mã sinh viên', 'Họ và tên', ...dates, 'Thống kê', 'Ghi chú'];
-    const rows = students.map((sv, i) => {
-      const summary = getSummary(sv.sinhVienId);
-      const dateValues = dates.map(d => {
-        const cell = activeData[sv.sinhVienId]?.[d];
-        return cell ? statusCode[cell.trangThai] : '-';
-      });
-      const statsText = `C:${summary.coMat} M:${summary.tre} V:${summary.vang}`;
-      return [i + 1, sv.maSV, sv.hoTen, ...dateValues, statsText, getCombinedNote(sv.sinhVienId)];
-    });
-
-    const wsData = [
-      [`DANH SÁCH ĐIỂM DANH`],
-      [`Môn học: ${selectedLop.tenMonHoc}`],
-      [`Mã lớp tín chỉ: ${selectedLop.maLop}`],
-      [],
-      headers,
-      ...rows,
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Điểm danh');
-
-    const colWidths = headers.map((h, i) => {
-      let max = h.length;
-      rows.forEach(r => {
-        const val = String(r[i] || '');
-        if (val.length > max) max = val.length;
-      });
-      return { wch: Math.max(max + 2, 10) };
-    });
-    ws['!cols'] = colWidths;
-
-    XLSX.writeFile(wb, `diem-danh-${selectedLop.maLop}.xlsx`);
-  };
 
   return (
     <div>
@@ -286,55 +237,229 @@ export function KetQuaDiemDanhPage() {
               </button>
             </>
           )}
-          <button
-            onClick={exportExcel}
-            disabled={!selectedLop || students.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Download className="w-4 h-4" /> Xuất Excel
-          </button>
-          <button
-            onClick={() => window.print()}
-            disabled={!selectedLop || students.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <FileText className="w-4 h-4" /> Xuất PDF
-          </button>
         </div>
       </div>
+
+      {/* Global Saving Overlay */}
+      {isSaving && (
+        <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-6 rounded-xl shadow-xl flex items-center gap-4">
+            <Loader2 className="w-6 h-6 animate-spin text-[#009dd9]" />
+            <span className="font-medium text-slate-700">Đang lưu kết quả điểm danh...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Center Modal for editing cell */}
+      {editingCellInfo && isEditing && (
+        <div className="fixed inset-0 z-[110] bg-black/10 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <ClickAwayListener onClickAway={() => setEditingCellInfo(null)}>
+            <div className="bg-white border border-border shadow-2xl rounded-2xl p-5 w-full max-w-sm animate-in zoom-in-95 fade-in duration-200">
+              <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+                <h4 className="font-semibold text-base text-slate-800">Sửa điểm danh</h4>
+                <button 
+                  onClick={() => setEditingCellInfo(null)}
+                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+
+              {(() => {
+                const { studentId, sessionId } = editingCellInfo;
+                const student = students.find(s => s.student_id === studentId);
+                const record = student?.records.find(r => r.class_session_id === sessionId);
+                if (!student || !record) return null;
+
+                const activeStatus = editData[studentId]?.[sessionId]?.status ?? record.status;
+                const activeNote = editData[studentId]?.[sessionId]?.note ?? record.note ?? '';
+
+                const setStatus = (st: number | null) => {
+                  setEditData(prev => {
+                    const next = { ...prev };
+                    if (!next[studentId]) next[studentId] = {};
+                    next[studentId] = { ...next[studentId] };
+                    next[studentId][sessionId] = {
+                      ...(next[studentId][sessionId] || { status: record.status, note: record.note ?? null }),
+                      status: st,
+                      note: st === null ? null : (next[studentId][sessionId]?.note ?? record.note ?? null),
+                    };
+                    return next;
+                  });
+                };
+
+                const setNote = (n: string) => {
+                  setEditData(prev => {
+                    const next = { ...prev };
+                    if (!next[studentId]) next[studentId] = {};
+                    next[studentId] = { ...next[studentId] };
+                    next[studentId][sessionId] = { 
+                      ...(next[studentId][sessionId] || { status: record.status }), 
+                      note: n 
+                    };
+                    return next;
+                  });
+                };
+
+                return (
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Trạng thái</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        <button 
+                          type="button" 
+                          onClick={() => setStatus(1)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === 1 
+                              ? 'bg-green-500 text-white shadow-md shadow-green-500/20' 
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Có mặt (C)
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setStatus(3)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === 3 
+                              ? 'bg-yellow-500 text-white shadow-md shadow-yellow-500/20' 
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Trễ (M)
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setStatus(2)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === 2 
+                              ? 'bg-red-500 text-white shadow-md shadow-red-500/20' 
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Vắng (V)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStatus(null)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === null
+                              ? 'bg-slate-700 text-white shadow-md shadow-slate-700/20'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Xóa
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Ghi chú</label>
+                      <textarea
+                        value={activeNote}
+                        onChange={(e) => setNote(e.target.value)}
+                        className="w-full text-sm border border-slate-200 rounded-lg px-4 py-3 outline-none focus:border-[#009dd9] focus:ring-2 focus:ring-[#009dd9]/20 transition-all resize-none"
+                        rows={3}
+                        placeholder={activeStatus === null ? 'Đã xóa trạng thái, ghi chú sẽ được xóa khi lưu' : 'Thêm lý do hoặc ghi chú...'}
+                        disabled={activeStatus === null}
+                      />
+                    </div>
+                    <div className="pt-2 border-t border-border flex justify-end">
+                      <button 
+                        type="button"
+                        onClick={() => setEditingCellInfo(null)}
+                        className="bg-[#009dd9] text-white font-medium px-5 py-2 rounded-lg hover:bg-[#008bc0] transition shadow-sm"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </ClickAwayListener>
+        </div>
+      )}
 
       {isEditing && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center gap-3">
           <Pencil className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800">
-            <strong>Chế độ chỉnh sửa:</strong> Click vào ô trạng thái để đổi (C → M → V). Nhấn <strong>Lưu</strong> khi xong.
+            <strong>Chế độ chỉnh sửa:</strong> Click vào ô trạng thái để thay đổi trạng thái, thêm ghi chú hoặc xóa dữ liệu của buổi đó. Nhấn <strong>Lưu</strong> khi xong.
           </p>
         </div>
       )}
 
       <div className="bg-white rounded-xl p-4 border border-border mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="mb-4 relative">
           <div>
-            <label className="block mb-1 text-sm text-muted-foreground">Môn học</label>
-            <PortableSelect
-              value={selectedLopId}
-              onChange={e => { setSelectedLopId(e.target.value); setFilterDateFrom(''); setFilterDateTo(''); cancelEditing(); }}
-              className="w-full px-4 pr-10 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-              labelClassName="text-sm"
+            <label className="block mb-1 text-sm text-muted-foreground font-medium">Lớp học</label>
+            <ClickAwayListener
+              onClickAway={() => {
+                setDropdownOpen(false);
+                setSearchClass('');
+              }}
             >
-              {myClasses.length === 0 ? <option value="">Không có lớp</option> : null}
-              {myClasses.map(l => (
-                <option key={l.id} value={l.id}>
-                  {l.tenMonHoc} - {l.maLop}
-                </option>
-              ))}
-            </PortableSelect>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDropdownOpen(prev => {
+                      const nextOpen = !prev;
+                      if (nextOpen) {
+                        setSearchClass('');
+                      }
+                      return nextOpen;
+                    });
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30 text-left"
+                >
+                  <span className="truncate">
+                    {selectedLop ? `${selectedLop.tenMonHoc} - ${selectedLop.maLop}` : 'Chọn lớp...'}
+                  </span>
+                  <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${dropdownOpen ? 'rotate-90' : ''}`} />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border shadow-xl rounded-lg z-50 max-h-72 flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-2 border-b border-border flex items-center sticky top-0 bg-white z-10 shrink-0">
+                      <Search className="w-4 h-4 text-muted-foreground ml-2 mr-2 shrink-0" />
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Tìm theo tên hoặc mã lớp..."
+                        className="w-full text-sm outline-none bg-transparent py-1"
+                        value={searchClass}
+                        onChange={(e) => setSearchClass(e.target.value)}
+                      />
+                    </div>
+                    <div className="overflow-y-auto p-1 flex-1">
+                      {filteredClasses.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">Không tìm thấy lớp học</div>
+                      ) : (
+                        filteredClasses.map(l => (
+                          <button
+                            key={l.id}
+                            onClick={() => {
+                              setSelectedLopId(l.id);
+                              setFilterDateFrom('');
+                              setFilterDateTo('');
+                              setSearchClass('');
+                              cancelEditing();
+                              setDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedLopId === l.id ? 'bg-[#009dd9]/10 text-[#009dd9]' : 'hover:bg-slate-50 text-slate-700'}`}
+                          >
+                            <span className="block">{l.tenMonHoc}</span>
+                            <span className="block text-xs opacity-70">{l.maLop}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ClickAwayListener>
           </div>
-          {selectedLop && (
-            <div className="text-sm flex flex-col justify-center">
-              <p><span className="text-muted-foreground">Mã lớp tín chỉ:</span> {selectedLop.maLop}</p>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
@@ -398,10 +523,10 @@ export function KetQuaDiemDanhPage() {
                   </thead>
                   <tbody>
                     {students.map((sv, i) => (
-                      <tr key={sv.sinhVienId} className="hover:bg-muted/30">
+                      <tr key={sv.student_id} className="hover:bg-muted/30">
                         <td className="border-b border-border py-2.5 px-3 text-center">{i + 1}</td>
-                        <td className="border-b border-border py-2.5 px-3">{sv.maSV}</td>
-                        <td className="border-b border-border py-2.5 px-3">{sv.hoTen}</td>
+                        <td className="border-b border-border py-2.5 px-3">{sv.student_code}</td>
+                        <td className="border-b border-border py-2.5 px-3">{sv.full_name}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -424,23 +549,27 @@ export function KetQuaDiemDanhPage() {
                   </thead>
                   <tbody>
                     {students.map((sv) => (
-                      <tr key={sv.sinhVienId} className="hover:bg-muted/30">
-                        {dates.map(d => {
-                          const cell = activeData[sv.sinhVienId]?.[d];
-                          const status = cell?.trangThai;
+                      <tr key={sv.student_id} className="hover:bg-muted/30">
+                        {sv.records.map((record, i) => {
+                          const activeStatus = isEditing && editData[sv.student_id]?.[record.class_session_id] !== undefined
+                            ? editData[sv.student_id][record.class_session_id].status
+                            : record.status;
+                            
+                          const dateKey = record.session_date;
 
                           return (
                             <td
-                              key={d}
-                              className={`border-b border-l border-border py-2.5 px-3 text-center ${status ? statusBg[status] : ''} ${isEditing ? 'cursor-pointer hover:ring-2 hover:ring-[#009dd9]/40 hover:ring-inset' : ''}`}
-                              onClick={() => cycleStatus(sv.sinhVienId, d)}
-                              title={isEditing ? 'Click để đổi' : cell?.ghiChu}
+                              key={dateKey + '_' + i}
+                              className={`border-b border-l border-border py-2.5 px-3 text-center ${activeStatus ? statusBgMap[activeStatus] : ''} ${isEditing ? 'cursor-pointer hover:ring-2 hover:ring-[#009dd9]/40 hover:ring-inset' : ''} relative`}
+                              onClick={() => handleCellClick(sv.student_id, record.class_session_id)}
+                              title={isEditing ? 'Click để sửa' : (record.note || undefined)}
                             >
-                              {status ? (
-                                <span className={`text-sm font-medium ${statusColor[status]}`}>{statusCode[status]}</span>
+                              {activeStatus ? (
+                                <span className={`text-sm font-medium ${statusColorMap[activeStatus]}`}>{statusCodeMap[activeStatus]}</span>
                               ) : (
                                 <span className="text-muted-foreground">-</span>
                               )}
+
                             </td>
                           );
                         })}
@@ -460,10 +589,10 @@ export function KetQuaDiemDanhPage() {
                   </thead>
                   <tbody>
                     {students.map((sv) => {
-                      const summary = getSummary(sv.sinhVienId);
-                      const note = getCombinedNote(sv.sinhVienId);
+                      const summary = getSummary(sv);
+                      const note = getCombinedNote(sv);
                       return (
-                        <tr key={sv.sinhVienId} className="hover:bg-muted/30">
+                        <tr key={sv.student_id} className="hover:bg-muted/30">
                           <td className="border-b border-border py-2.5 px-4 text-center whitespace-nowrap">
                             <span className="text-green-600 text-xs">C:{summary.coMat}</span>
                             <span className="mx-1 text-muted-foreground">|</span>
@@ -471,8 +600,17 @@ export function KetQuaDiemDanhPage() {
                             <span className="mx-1 text-muted-foreground">|</span>
                             <span className="text-red-600 text-xs">V:{summary.vang}</span>
                           </td>
-                          <td className="border-b border-l border-border py-2.5 px-4 text-left w-[320px] min-w-[320px] max-w-[320px]" title={note || undefined}>
-                            <span className="block truncate text-xs text-gray-600">{note || '—'}</span>
+                          <td
+                            className={`border-b border-l border-border py-2.5 px-4 text-left w-[320px] min-w-[320px] max-w-[320px] ${note ? 'cursor-pointer hover:bg-slate-50/70 transition-colors' : ''}`}
+                            title={note || undefined}
+                            onClick={() => {
+                              if (!note) return;
+                              setNoteDetail({ studentName: sv.full_name, note });
+                            }}
+                          >
+                            <span className="block truncate text-xs text-gray-600">
+                              {note || '—'}
+                            </span>
                           </td>
                         </tr>
                       );
@@ -487,6 +625,28 @@ export function KetQuaDiemDanhPage() {
         <div className="bg-white rounded-xl p-12 border border-border text-center">
           <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
           <p className="text-muted-foreground">Chưa có kết quả điểm danh nào</p>
+        </div>
+      )}
+
+      {noteDetail && (
+        <div className="fixed inset-0 z-[120] bg-black/20 backdrop-blur-[1px] flex items-center justify-center p-4">
+          <ClickAwayListener onClickAway={() => setNoteDetail(null)}>
+            <div className="w-full max-w-lg bg-white border border-border rounded-xl shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-slate-50/80">
+                <h4 className="text-sm font-semibold text-slate-800">Chi tiết ghi chú - {noteDetail.studentName}</h4>
+                <button
+                  type="button"
+                  onClick={() => setNoteDetail(null)}
+                  className="p-1.5 hover:bg-slate-200 rounded-full transition-colors"
+                >
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{noteDetail.note}</p>
+              </div>
+            </div>
+          </ClickAwayListener>
         </div>
       )}
     </div>

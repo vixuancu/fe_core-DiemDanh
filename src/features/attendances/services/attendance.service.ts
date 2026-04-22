@@ -2,6 +2,8 @@ import type {
   DiemDanh,
   UpdateTrangThaiDto,
   AttendanceFilter,
+  AttendanceMatrixResponse,
+  AttendanceUpdateCellRequest,
 } from '../types';
 import type { PaginatedResult } from '@/shared/types';
 
@@ -27,4 +29,10 @@ export interface IAttendanceService {
   
   /** Khởi tạo data điểm danh ban đầu (set mốc vắng cho toàn bộ SV class) */
   syncStudentsForSchedule(lichHocId: string): Promise<void>;
+
+  /** Lấy matrix điểm danh của lớp tín chỉ */
+  getMatrix(courseSectionId: string | number, fromDate?: string, toDate?: string): Promise<AttendanceMatrixResponse>;
+
+  /** Update cell trong matrix */
+  updateCell(request: AttendanceUpdateCellRequest): Promise<any>;
 }

@@ -8,6 +8,8 @@ export const attendanceKeys = {
   lists: () => [...attendanceKeys.all, 'list'] as const,
   list: (filter: AttendanceFilter) => [...attendanceKeys.lists(), filter] as const,
   stats: (lichHocId: string) => [...attendanceKeys.all, 'stats', lichHocId] as const,
+  matrix: (courseSectionId: string | number, fromDate?: string, toDate?: string) => 
+    [...attendanceKeys.all, 'matrix', courseSectionId, fromDate, toDate] as const,
 };
 
 export function useAttendances(filter: AttendanceFilter) {
@@ -56,6 +58,33 @@ export function useSyncStudents() {
     },
     onError: (error) => {
       const message = error instanceof Error ? error.message : 'Đồng bộ sinh viên thất bại';
+      notify.error(message);
+    },
+  });
+}
+
+export function useAttendanceMatrix(courseSectionId: string | number | undefined, fromDate?: string, toDate?: string) {
+  return useQuery({
+    queryKey: attendanceKeys.matrix(courseSectionId || '', fromDate, toDate),
+    queryFn: () => {
+      if (!courseSectionId) throw new Error('Missing ID');
+      return attendanceService.getMatrix(courseSectionId, fromDate, toDate);
+    },
+    enabled: !!courseSectionId,
+  });
+}
+
+import { AttendanceUpdateCellRequest } from '../types';
+
+export function useUpdateAttendanceCell() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: AttendanceUpdateCellRequest) => attendanceService.updateCell(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: attendanceKeys.all });
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Cập nhật điểm danh thất bại';
       notify.error(message);
     },
   });
