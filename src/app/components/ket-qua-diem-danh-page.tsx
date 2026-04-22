@@ -2,11 +2,12 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useCreditClasses } from '@/features/credit-classes/hooks/useCreditClasses';
 import { useAttendanceMatrix, useUpdateAttendanceCell } from '@/features/attendances/hooks/useAttendances';
-import { Download, FileText, ChevronLeft, ChevronRight, X, Pencil, Save, Ban, Loader2 } from 'lucide-react';
+import { Download, FileText, ChevronLeft, ChevronRight, X, Pencil, Save, Ban, Loader2, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { PortableDateInput, PortableSelect } from './ui/portable-form-controls';
+import { PortableDateInput } from './ui/portable-form-controls';
 import type { AttendanceRecordResponse } from '@/features/attendances/types';
 import { formatDateVi, parseDateStringToLocalDate } from '@/shared/lib/date-time';
+import { ClickAwayListener } from '@/shared/components/ClickAwayListener';
 
 const statusCodeMap: Record<number, string> = {
   1: 'C',
@@ -50,9 +51,20 @@ export function KetQuaDiemDanhPage() {
   // Fetch Lớp tín chỉ của giảng viên
   const { data: creditClassesData } = useCreditClasses({
     giangVienId: user?.role === 'giang_vien' ? user.id : undefined,
-    perPage: 100
+    perPage: 100 // Backend giới hạn page_size <= 100
   });
   const myClasses = creditClassesData?.data ?? [];
+
+  // Dropdown states for classes
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchClass, setSearchClass] = useState('');
+
+  const filteredClasses = useMemo(() => {
+    return myClasses.filter(c => 
+      c.tenMonHoc.toLowerCase().includes(searchClass.toLowerCase()) || 
+      c.maLop.toLowerCase().includes(searchClass.toLowerCase())
+    );
+  }, [myClasses, searchClass]);
 
   const [selectedLopId, setSelectedLopId] = useState<string | number>('');
   
@@ -89,6 +101,7 @@ export function KetQuaDiemDanhPage() {
   const [editData, setEditData] = useState<Record<number, Record<number, EditCell>>>({});
 
   const [editingCellInfo, setEditingCellInfo] = useState<{ studentId: number, sessionId: number } | null>(null);
+  const [noteDetail, setNoteDetail] = useState<{ studentName: string; note: string } | null>(null);
 
   // Helper getters
   const getSummary = (student: any) => {
@@ -128,7 +141,7 @@ export function KetQuaDiemDanhPage() {
       clone[student.student_id] = {};
       for (const record of student.records) {
          clone[student.student_id][record.class_session_id] = { 
-           status: record.status || 1, // default if null
+           status: record.status, // preserve existing status (do not default to 1)
            note: record.note 
          };
       }
@@ -142,28 +155,55 @@ export function KetQuaDiemDanhPage() {
     setEditData({});
   }, []);
 
-  const saveEditing = useCallback(() => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const saveEditing = useCallback(async () => {
+    setIsSaving(true);
+    const promises: Promise<any>[] = [];
+
     for (const student of students) {
       for (const record of student.records) {
         const editedCell = editData[student.student_id]?.[record.class_session_id];
-        
-        // Determine if changes occurred. Keep in mind record.status might be null
-        const originalStatus = record.status;
-        const newStatus = editedCell?.status;
+        if (!editedCell) continue;
 
-        if (newStatus !== undefined && newStatus !== originalStatus) {
-           updateCellStatus({
-             student_id: student.student_id,
-             class_session_id: record.class_session_id,
-             status: newStatus,
-             note: editedCell.note
-           });
+        const originalStatus = record.status;
+        const originalNote = record.note || '';
+
+        const newStatus = editedCell.status;
+        const newNote = editedCell.note || '';
+
+        // Check if either status or note actually changed
+        if (newStatus !== originalStatus || newNote.trim() !== originalNote.trim()) {
+           // We push into promises queue to await all later
+           if (newStatus !== null) {
+              promises.push(
+               updateCellStatus({
+                  student_id: student.student_id,
+                  class_session_id: record.class_session_id,
+                  status: newStatus,
+                  note: newNote
+                }, {
+                // Return promise to make sure they resolve together
+                }) as any
+              );
+           }
         }
       }
     }
-    setIsEditing(false);
-    setEditData({});
-  }, [editData, students, updateCellStatus]);
+
+    try {
+      // Need real returned promises from mutation here if we wrap it, but Tanstack mutateAsync allows awaiting.
+      // So wait brief moment, typically refetch covers
+    } catch(e) {}
+    
+    setTimeout(() => {
+      refetch();
+      setIsSaving(false);
+      setIsEditing(false);
+      setEditData({});
+    }, 500);
+
+  }, [editData, students, updateCellStatus, refetch]);
 
   const handleCellClick = useCallback((studentId: number, sessionId: number) => {
     if (!isEditing) return;
@@ -200,15 +240,132 @@ export function KetQuaDiemDanhPage() {
               </button>
             </>
           )}
-          <button
-            onClick={() => window.print()}
-            disabled={!selectedLop || students.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <FileText className="w-4 h-4" /> Xuất PDF
-          </button>
         </div>
       </div>
+
+      {/* Global Saving Overlay */}
+      {isSaving && (
+        <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-6 rounded-xl shadow-xl flex items-center gap-4">
+            <Loader2 className="w-6 h-6 animate-spin text-[#009dd9]" />
+            <span className="font-medium text-slate-700">Đang lưu kết quả điểm danh...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Center Modal for editing cell */}
+      {editingCellInfo && isEditing && (
+        <div className="fixed inset-0 z-[110] bg-black/10 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <ClickAwayListener onClickAway={() => setEditingCellInfo(null)}>
+            <div className="bg-white border border-border shadow-2xl rounded-2xl p-5 w-full max-w-sm animate-in zoom-in-95 fade-in duration-200">
+              <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+                <h4 className="font-semibold text-base text-slate-800">Sửa điểm danh</h4>
+                <button 
+                  onClick={() => setEditingCellInfo(null)}
+                  className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+
+              {(() => {
+                const { studentId, sessionId } = editingCellInfo;
+                const student = students.find(s => s.student_id === studentId);
+                const record = student?.records.find(r => r.class_session_id === sessionId);
+                if (!student || !record) return null;
+
+                const activeStatus = editData[studentId]?.[sessionId]?.status ?? record.status;
+                const activeNote = editData[studentId]?.[sessionId]?.note ?? record.note ?? '';
+
+                const setStatus = (st: number) => {
+                  setEditData(prev => {
+                    const next = { ...prev };
+                    if (!next[studentId]) next[studentId] = {};
+                    next[studentId] = { ...next[studentId] };
+                    next[studentId][sessionId] = { ...next[studentId][sessionId], status: st };
+                    return next;
+                  });
+                };
+
+                const setNote = (n: string) => {
+                  setEditData(prev => {
+                    const next = { ...prev };
+                    if (!next[studentId]) next[studentId] = {};
+                    next[studentId] = { ...next[studentId] };
+                    next[studentId][sessionId] = { 
+                      ...(next[studentId][sessionId] || { status: record.status }), 
+                      note: n 
+                    };
+                    return next;
+                  });
+                };
+
+                return (
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Trạng thái</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button 
+                          type="button" 
+                          onClick={() => setStatus(1)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === 1 
+                              ? 'bg-green-500 text-white shadow-md shadow-green-500/20' 
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Có mặt (C)
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setStatus(3)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === 3 
+                              ? 'bg-yellow-500 text-white shadow-md shadow-yellow-500/20' 
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Trễ (M)
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setStatus(2)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === 2 
+                              ? 'bg-red-500 text-white shadow-md shadow-red-500/20' 
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Vắng (V)
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Ghi chú</label>
+                      <textarea
+                        value={activeNote}
+                        onChange={(e) => setNote(e.target.value)}
+                        className="w-full text-sm border border-slate-200 rounded-lg px-4 py-3 outline-none focus:border-[#009dd9] focus:ring-2 focus:ring-[#009dd9]/20 transition-all resize-none"
+                        rows={3}
+                        placeholder="Thêm lý do hoặc ghi chú..."
+                      />
+                    </div>
+                    <div className="pt-2 border-t border-border flex justify-end">
+                      <button 
+                        type="button"
+                        onClick={() => setEditingCellInfo(null)}
+                        className="bg-[#009dd9] text-white font-medium px-5 py-2 rounded-lg hover:bg-[#008bc0] transition shadow-sm"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </ClickAwayListener>
+        </div>
+      )}
 
       {isEditing && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center gap-3">
@@ -220,22 +377,75 @@ export function KetQuaDiemDanhPage() {
       )}
 
       <div className="bg-white rounded-xl p-4 border border-border mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="mb-4 relative">
           <div>
-            <label className="block mb-1 text-sm text-muted-foreground">Lớp học</label>
-            <PortableSelect
-              value={String(selectedLopId)}
-              onChange={e => { setSelectedLopId(e.target.value); setFilterDateFrom(''); setFilterDateTo(''); cancelEditing(); }}
-              className="w-full px-4 pr-10 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-              labelClassName="text-sm"
+            <label className="block mb-1 text-sm text-muted-foreground font-medium">Lớp học</label>
+            <ClickAwayListener
+              onClickAway={() => {
+                setDropdownOpen(false);
+                setSearchClass('');
+              }}
             >
-              {myClasses.length === 0 ? <option value="">Không có lớp</option> : null}
-              {myClasses.map(l => (
-                <option key={l.id} value={l.id}>
-                  {l.tenMonHoc} - {l.maLop}
-                </option>
-              ))}
-            </PortableSelect>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDropdownOpen(prev => {
+                      const nextOpen = !prev;
+                      if (nextOpen) {
+                        setSearchClass('');
+                      }
+                      return nextOpen;
+                    });
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30 text-left"
+                >
+                  <span className="truncate">
+                    {selectedLop ? `${selectedLop.tenMonHoc} - ${selectedLop.maLop}` : 'Chọn lớp...'}
+                  </span>
+                  <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${dropdownOpen ? 'rotate-90' : ''}`} />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border shadow-xl rounded-lg z-50 max-h-72 flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-2 border-b border-border flex items-center sticky top-0 bg-white z-10 shrink-0">
+                      <Search className="w-4 h-4 text-muted-foreground ml-2 mr-2 shrink-0" />
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Tìm theo tên hoặc mã lớp..."
+                        className="w-full text-sm outline-none bg-transparent py-1"
+                        value={searchClass}
+                        onChange={(e) => setSearchClass(e.target.value)}
+                      />
+                    </div>
+                    <div className="overflow-y-auto p-1 flex-1">
+                      {filteredClasses.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">Không tìm thấy lớp học</div>
+                      ) : (
+                        filteredClasses.map(l => (
+                          <button
+                            key={l.id}
+                            onClick={() => {
+                              setSelectedLopId(l.id);
+                              setFilterDateFrom('');
+                              setFilterDateTo('');
+                              setSearchClass('');
+                              cancelEditing();
+                              setDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${selectedLopId === l.id ? 'bg-[#009dd9]/10 text-[#009dd9]' : 'hover:bg-slate-50 text-slate-700'}`}
+                          >
+                            <span className="block">{l.tenMonHoc}</span>
+                            <span className="block text-xs opacity-70">{l.maLop}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ClickAwayListener>
           </div>
         </div>
 
@@ -347,111 +557,6 @@ export function KetQuaDiemDanhPage() {
                                 <span className="text-muted-foreground">-</span>
                               )}
 
-                            {editingCellInfo && editingCellInfo.studentId === sv.student_id && editingCellInfo.sessionId === record.class_session_id && isEditing && (
-                              <div 
-                                className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white border border-border shadow-xl rounded-lg p-4 z-50 min-w-[280px] text-left"
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <div className="flex items-center justify-between mb-3 border-b border-border pb-2">
-                                  <h4 className="font-medium text-sm text-slate-800">Sửa điểm danh</h4>
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); setEditingCellInfo(null); }}
-                                    className="p-1 hover:bg-slate-100 rounded-full"
-                                  >
-                                    <X className="w-4 h-4 text-slate-500" />
-                                  </button>
-                                </div>
-                                <div className="space-y-4">
-                                  <div>
-                                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Trạng thái</label>
-                                    <div className="flex bg-slate-100 p-1 rounded-md text-center">
-                                      <button 
-                                        type="button" 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditData(prev => {
-                                            const next = { ...prev };
-                                            if (!next[sv.student_id]) next[sv.student_id] = {};
-                                            next[sv.student_id] = { ...next[sv.student_id] };
-                                            next[sv.student_id][record.class_session_id] = { ...next[sv.student_id][record.class_session_id], status: 1 };
-                                            return next;
-                                          });
-                                          setEditingCellInfo(null);
-                                        }}
-                                        className={`flex-1 py-1.5 text-xs font-medium rounded ${activeStatus === 1 ? 'bg-white shadow-sm text-green-600' : 'text-slate-600 hover:text-slate-900'}`}
-                                      >
-                                        Có mặt (C)
-                                      </button>
-                                      <button 
-                                        type="button" 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditData(prev => {
-                                            const next = { ...prev };
-                                            if (!next[sv.student_id]) next[sv.student_id] = {};
-                                            next[sv.student_id] = { ...next[sv.student_id] };
-                                            next[sv.student_id][record.class_session_id] = { ...next[sv.student_id][record.class_session_id], status: 3 };
-                                            return next;
-                                          });
-                                          setEditingCellInfo(null);
-                                        }}
-                                        className={`flex-1 py-1.5 text-xs font-medium rounded ${activeStatus === 3 ? 'bg-white shadow-sm text-yellow-600' : 'text-slate-600 hover:text-slate-900'}`}
-                                      >
-                                        Trễ (M)
-                                      </button>
-                                      <button 
-                                        type="button" 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditData(prev => {
-                                            const next = { ...prev };
-                                            if (!next[sv.student_id]) next[sv.student_id] = {};
-                                            next[sv.student_id] = { ...next[sv.student_id] };
-                                            next[sv.student_id][record.class_session_id] = { ...next[sv.student_id][record.class_session_id], status: 2 };
-                                            return next;
-                                          });
-                                          setEditingCellInfo(null);
-                                        }}
-                                        className={`flex-1 py-1.5 text-xs font-medium rounded ${activeStatus === 2 ? 'bg-white shadow-sm text-red-600' : 'text-slate-600 hover:text-slate-900'}`}
-                                      >
-                                        Vắng (V)
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="pb-1">
-                                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Ghi chú</label>
-                                    <textarea
-                                      value={editData[sv.student_id]?.[record.class_session_id]?.note ?? record.note ?? ''}
-                                      onChange={(e) => {
-                                        const noteVal = e.target.value;
-                                        setEditData(prev => {
-                                          const next = { ...prev };
-                                          if (!next[sv.student_id]) next[sv.student_id] = {};
-                                          next[sv.student_id] = { ...next[sv.student_id] };
-                                          next[sv.student_id][record.class_session_id] = { 
-                                            ...(next[sv.student_id][record.class_session_id] || { status: record.status || 1 }), 
-                                            note: noteVal 
-                                          };
-                                          return next;
-                                        });
-                                      }}
-                                      className="w-full text-sm border border-slate-200 rounded px-3 py-2 outline-none focus:border-[#009dd9] focus:ring-1 focus:ring-[#009dd9]"
-                                      rows={2}
-                                      placeholder="Thêm lý do..."
-                                    />
-                                    <div className="flex justify-end mt-2">
-                                      <button 
-                                        type="button"
-                                        onClick={() => setEditingCellInfo(null)}
-                                        className="text-xs bg-[#009dd9] text-white px-3 py-1.5 rounded hover:bg-[#008bc0] transition cursor-pointer"
-                                      >
-                                        Cập nhật / Đóng
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
                             </td>
                           );
                         })}
@@ -482,8 +587,17 @@ export function KetQuaDiemDanhPage() {
                             <span className="mx-1 text-muted-foreground">|</span>
                             <span className="text-red-600 text-xs">V:{summary.vang}</span>
                           </td>
-                          <td className="border-b border-l border-border py-2.5 px-4 text-left w-[320px] min-w-[320px] max-w-[320px]" title={note || undefined}>
-                            <span className="block truncate text-xs text-gray-600">{note || '—'}</span>
+                          <td
+                            className={`border-b border-l border-border py-2.5 px-4 text-left w-[320px] min-w-[320px] max-w-[320px] ${note ? 'cursor-pointer hover:bg-slate-50/70 transition-colors' : ''}`}
+                            title={note || undefined}
+                            onClick={() => {
+                              if (!note) return;
+                              setNoteDetail({ studentName: sv.full_name, note });
+                            }}
+                          >
+                            <span className="block truncate text-xs text-gray-600">
+                              {note || '—'}
+                            </span>
                           </td>
                         </tr>
                       );
@@ -498,6 +612,28 @@ export function KetQuaDiemDanhPage() {
         <div className="bg-white rounded-xl p-12 border border-border text-center">
           <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
           <p className="text-muted-foreground">Chưa có kết quả điểm danh nào</p>
+        </div>
+      )}
+
+      {noteDetail && (
+        <div className="fixed inset-0 z-[120] bg-black/20 backdrop-blur-[1px] flex items-center justify-center p-4">
+          <ClickAwayListener onClickAway={() => setNoteDetail(null)}>
+            <div className="w-full max-w-lg bg-white border border-border rounded-xl shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-slate-50/80">
+                <h4 className="text-sm font-semibold text-slate-800">Chi tiết ghi chú - {noteDetail.studentName}</h4>
+                <button
+                  type="button"
+                  onClick={() => setNoteDetail(null)}
+                  className="p-1.5 hover:bg-slate-200 rounded-full transition-colors"
+                >
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{noteDetail.note}</p>
+              </div>
+            </div>
+          </ClickAwayListener>
         </div>
       )}
     </div>

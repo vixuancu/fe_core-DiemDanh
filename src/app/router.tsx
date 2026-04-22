@@ -70,9 +70,9 @@ export const router = createBrowserRouter([
             ],
           },
 
-          // ── Chỉ Giảng viên ───────────────────────────────────────────────
+          // ── Admin + Giáo vụ + Giảng viên ─────────────────────────────────
           {
-            element: <RoleGuard allowedRoles={['giang_vien']} />,
+            element: <RoleGuard allowedRoles={['admin', 'giao_vu', 'giang_vien']} />,
             children: [
               { path: 'ket-qua-diem-danh', element: <KetQuaDiemDanhPage /> },
             ],
