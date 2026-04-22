@@ -89,7 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: null,
     // icon: <ClipboardCheck className="w-5 h-5" />,
     children: [
-      { label: 'Điểm danh', path: '/diem-danh', icon: <ScanFace className="w-4 h-4" />, roles: ['admin', 'giao_vu'] },
+      { label: 'Điểm danh', path: '/diem-danh', icon: <ScanFace className="w-4 h-4" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
       { label: 'Lịch sử điểm danh', path: '/lich-su', icon: <History className="w-4 h-4" />, roles: ['admin', 'giao_vu', 'giang_vien'] },
     ],
   },

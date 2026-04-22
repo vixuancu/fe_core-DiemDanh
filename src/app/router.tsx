@@ -18,7 +18,6 @@ import { HocPhanPage } from '@/app/components/hoc-phan-page';
 import { PhongHocPage } from '@/app/components/phong-hoc-page';
 import { LichHocPage } from '@/app/components/lich-hoc-page';
 import { LichHocDieuChinhPage } from '@/app/components/lich-hoc-dieu-chinh-page';
-import { DiemDanhPage } from '@/app/components/diem-danh-page';
 import { KetQuaDiemDanhPage } from '@/app/components/ket-qua-diem-danh-page';
 import { LichSuPage } from '@/app/components/lich-su-page';
 import { BaoCaoPage } from '@/app/components/bao-cao-page';
@@ -26,6 +25,7 @@ import { CameraPage } from '@/app/components/camera-page';
 import { TaiKhoanPage } from '@/app/components/tai-khoan-page';
 import { DoiMatKhauPage } from '@/app/components/doi-mat-khau-page';
 import { DiemDanhAiDemoPage } from '@/app/components/diem-danh-ai-demo-page';
+import { DiemDanhWebcamPage } from '@/app/components/diem-danh-webcam-page';
 
 export const router = createBrowserRouter([
   // Public routes
@@ -53,6 +53,7 @@ export const router = createBrowserRouter([
           { path: 'lich-hoc', element: <LichHocPage /> },
           { path: 'lich-su', element: <LichSuPage /> },
           { path: 'doi-mat-khau', element: <DoiMatKhauPage /> },
+          { path: 'diem-danh', element: <DiemDanhWebcamPage /> },
 
           // ── Admin + Giáo vụ ──────────────────────────────────────────────
           {
@@ -65,7 +66,6 @@ export const router = createBrowserRouter([
               { path: 'lop-tin-chi/:lopTinChiId/sinh-vien', element: <LopTinChiSinhVienPage /> },
               { path: 'phong-hoc', element: <PhongHocPage /> },
               { path: 'dieu-chinh', element: <LichHocDieuChinhPage /> },
-              { path: 'diem-danh', element: <DiemDanhPage /> },
               { path: 'bao-cao', element: <BaoCaoPage /> },
             ],
           },
