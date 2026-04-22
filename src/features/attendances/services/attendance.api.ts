@@ -1,6 +1,6 @@
 import { config } from '@/shared/config/env';
 import type { IAttendanceService, AttendanceStats } from './attendance.service';
-import type { DiemDanh, UpdateTrangThaiDto, AttendanceFilter } from '../types';
+import type { DiemDanh, UpdateTrangThaiDto, AttendanceFilter, AttendanceMatrixResponse, AttendanceUpdateCellRequest } from '../types';
 import type { PaginatedResult } from '@/shared/types';
 
 const getHeaders = () => ({
@@ -53,5 +53,25 @@ export const attendanceApi: IAttendanceService = {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error(`Thao tác thất bại: ${res.status}`);
+  },
+
+  async getMatrix(courseSectionId: string | number, fromDate?: string, toDate?: string): Promise<AttendanceMatrixResponse> {
+    const params = new URLSearchParams({ course_section_id: String(courseSectionId) });
+    if (fromDate) params.append('from_date', fromDate);
+    if (toDate) params.append('to_date', toDate);
+
+    const res = await fetch(`${config.apiBaseUrl}/attendance-management/matrix?${params}`, { headers: getHeaders() });
+    const response = await handleResponse<any>(res);
+    return response.data; // FastAPI `DataResponse<T>` -> `data`
+  },
+
+  async updateCell(request: AttendanceUpdateCellRequest): Promise<any> {
+    const res = await fetch(`${config.apiBaseUrl}/attendance-management/cell`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(request),
+    });
+    const response = await handleResponse<any>(res);
+    return response.data;
   },
 };

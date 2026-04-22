@@ -1,5 +1,5 @@
 import type { IAttendanceService, AttendanceStats } from './attendance.service';
-import type { DiemDanh, UpdateTrangThaiDto, AttendanceFilter } from '../types';
+import type { DiemDanh, UpdateTrangThaiDto, AttendanceFilter, AttendanceMatrixResponse, AttendanceUpdateCellRequest } from '../types';
 import type { PaginatedResult } from '@/shared/types';
 import { mockDiemDanh, mockLichHoc, mockSinhVien } from '@/app/components/data'; // Tạm dùng gốc để mock
 
@@ -92,4 +92,16 @@ export const attendanceMock: IAttendanceService = {
 
     STORE = [...STORE, ...newRecords];
   },
+
+  async getMatrix(courseSectionId: string | number, fromDate?: string, toDate?: string): Promise<AttendanceMatrixResponse> {
+    return {
+      course_section_id: Number(courseSectionId),
+      students: [],
+      total_sessions: 0,
+    };
+  },
+
+  async updateCell(request: AttendanceUpdateCellRequest): Promise<any> {
+    return { success: true };
+  }
 };
