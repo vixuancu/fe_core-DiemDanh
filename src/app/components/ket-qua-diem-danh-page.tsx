@@ -174,19 +174,16 @@ export function KetQuaDiemDanhPage() {
 
         // Check if either status or note actually changed
         if (newStatus !== originalStatus || newNote.trim() !== originalNote.trim()) {
-           // We push into promises queue to await all later
-           if (newStatus !== null) {
-              promises.push(
-               updateCellStatus({
-                  student_id: student.student_id,
-                  class_session_id: record.class_session_id,
-                  status: newStatus,
-                  note: newNote
-                }, {
-                // Return promise to make sure they resolve together
-                }) as any
-              );
-           }
+           promises.push(
+            updateCellStatus({
+               student_id: student.student_id,
+               class_session_id: record.class_session_id,
+               status: newStatus,
+               note: newStatus === null ? null : newNote
+             }, {
+             // Return promise to make sure they resolve together
+             }) as any
+           );
         }
       }
     }
@@ -277,12 +274,16 @@ export function KetQuaDiemDanhPage() {
                 const activeStatus = editData[studentId]?.[sessionId]?.status ?? record.status;
                 const activeNote = editData[studentId]?.[sessionId]?.note ?? record.note ?? '';
 
-                const setStatus = (st: number) => {
+                const setStatus = (st: number | null) => {
                   setEditData(prev => {
                     const next = { ...prev };
                     if (!next[studentId]) next[studentId] = {};
                     next[studentId] = { ...next[studentId] };
-                    next[studentId][sessionId] = { ...next[studentId][sessionId], status: st };
+                    next[studentId][sessionId] = {
+                      ...(next[studentId][sessionId] || { status: record.status, note: record.note ?? null }),
+                      status: st,
+                      note: st === null ? null : (next[studentId][sessionId]?.note ?? record.note ?? null),
+                    };
                     return next;
                   });
                 };
@@ -304,7 +305,7 @@ export function KetQuaDiemDanhPage() {
                   <div className="space-y-5">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">Trạng thái</label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         <button 
                           type="button" 
                           onClick={() => setStatus(1)}
@@ -338,6 +339,17 @@ export function KetQuaDiemDanhPage() {
                         >
                           Vắng (V)
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setStatus(null)}
+                          className={`py-2 px-3 text-sm font-medium rounded-lg transition-all ${
+                            activeStatus === null
+                              ? 'bg-slate-700 text-white shadow-md shadow-slate-700/20'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          Xóa
+                        </button>
                       </div>
                     </div>
                     <div>
@@ -347,7 +359,8 @@ export function KetQuaDiemDanhPage() {
                         onChange={(e) => setNote(e.target.value)}
                         className="w-full text-sm border border-slate-200 rounded-lg px-4 py-3 outline-none focus:border-[#009dd9] focus:ring-2 focus:ring-[#009dd9]/20 transition-all resize-none"
                         rows={3}
-                        placeholder="Thêm lý do hoặc ghi chú..."
+                        placeholder={activeStatus === null ? 'Đã xóa trạng thái, ghi chú sẽ được xóa khi lưu' : 'Thêm lý do hoặc ghi chú...'}
+                        disabled={activeStatus === null}
                       />
                     </div>
                     <div className="pt-2 border-t border-border flex justify-end">
@@ -371,7 +384,7 @@ export function KetQuaDiemDanhPage() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center gap-3">
           <Pencil className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800">
-            <strong>Chế độ chỉnh sửa:</strong> Click vào ô trạng thái để thay đổi trạng thái hoặc thêm ghi chú. Nhấn <strong>Lưu</strong> khi xong.
+            <strong>Chế độ chỉnh sửa:</strong> Click vào ô trạng thái để thay đổi trạng thái, thêm ghi chú hoặc xóa dữ liệu của buổi đó. Nhấn <strong>Lưu</strong> khi xong.
           </p>
         </div>
       )}

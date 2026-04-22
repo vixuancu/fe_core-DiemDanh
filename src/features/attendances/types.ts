@@ -47,7 +47,7 @@ export interface AttendanceMatrixResponse {
 export interface AttendanceUpdateCellRequest {
   student_id: number;
   class_session_id: number;
-  status: number;
+  status: number | null;
   note?: string | null;
 }
 
