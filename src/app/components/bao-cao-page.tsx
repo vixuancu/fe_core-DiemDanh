@@ -50,15 +50,19 @@ export function BaoCaoPage() {
     { from_date: dateFrom || undefined, to_date: dateTo || undefined },
     showReport
   );
-  const { data: reportDetailsData, isLoading: isLoadingDetails } = useReportDetails(reportFilter, showReport);
+  const {
+    data: reportDetailsData,
+    isLoading: isLoadingDetails,
+    isFetching: isFetchingDetails,
+  } = useReportDetails(reportFilter, showReport);
 
   const isLoading = isLoadingStats || isLoadingWeekly || isLoadingClassSummary || isLoadingDetails;
 
   const reportData = reportDetailsData?.data ?? [];
   const meta = {
     total: reportDetailsData?.total ?? 0,
-    page: reportDetailsData?.page ?? 1,
-    lastPage: reportDetailsData?.totalPages ?? 1,
+    page: currentPage,
+    lastPage: reportDetailsData?.totalPages ?? Math.max(currentPage, 1),
   };
 
   const paginationItems = React.useMemo(
@@ -67,10 +71,10 @@ export function BaoCaoPage() {
   );
 
   React.useEffect(() => {
-    if (currentPage > meta.lastPage) {
+    if (reportDetailsData && currentPage > meta.lastPage) {
       setCurrentPage(meta.lastPage > 0 ? meta.lastPage : 1);
     }
-  }, [currentPage, meta.lastPage]);
+  }, [currentPage, meta.lastPage, reportDetailsData]);
 
   const reportStats = reportStatsData ?? {
     total_records: 0,
@@ -354,8 +358,9 @@ export function BaoCaoPage() {
               <div className="flex items-center justify-between px-4 py-3 border-t border-border flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <p className="text-sm text-muted-foreground">
-                    Hiển thị {(meta.page - 1) * perPage + 1}-{Math.min(meta.page * perPage, meta.total)} / {meta.total}
-                  </p>
+                      Hiển thị {(meta.page - 1) * perPage + 1}-{Math.min(meta.page * perPage, meta.total)} / {meta.total}
+                      {isFetchingDetails ? ' (đang tải...)' : ''}
+                    </p>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm text-muted-foreground">Số bản ghi:</span>
                     <PortableSelect
@@ -369,7 +374,7 @@ export function BaoCaoPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={meta.page === 1} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   {paginationItems.map((item, idx) => (
@@ -379,13 +384,13 @@ export function BaoCaoPage() {
                         <button
                           key={item}
                           onClick={() => setCurrentPage(item)}
-                          className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${meta.page === item ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
+                          className={`w-8 h-8 rounded-lg text-sm cursor-pointer ${currentPage === item ? 'bg-[#009dd9] text-white' : 'hover:bg-muted'}`}
                         >
                           {item}
                         </button>
                       )
                   ))}
-                  <button onClick={() => setCurrentPage(p => Math.min(meta.lastPage, p + 1))} disabled={meta.page === meta.lastPage} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
+                  <button onClick={() => setCurrentPage(p => Math.min(meta.lastPage, p + 1))} disabled={currentPage === meta.lastPage} className="p-2 rounded-lg hover:bg-muted disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
