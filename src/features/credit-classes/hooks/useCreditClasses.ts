@@ -99,7 +99,6 @@ export function useCreditClassSessions(sectionId: string) {
     queryKey: creditClassKeys.sessions(sectionId),
     queryFn: () => creditClassService.listSessions(sectionId),
     enabled: !!sectionId,
-    placeholderData: (prev) => prev,
   });
 }
 

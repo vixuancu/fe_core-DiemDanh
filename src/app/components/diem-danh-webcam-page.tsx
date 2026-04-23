@@ -106,6 +106,11 @@ function resolveBoxFrameClass(state: DrawFaceBox['state']): string {
   return 'border-red-500 bg-red-500/15';
 }
 
+function resolveRejectedText(debugReason?: string): string {
+  if (debugReason === 'not_enrolled_in_session') return 'Khong thuoc lop dang diem danh';
+  return 'Khong dung SV trong lop';
+}
+
 function resolveBoxLabelClass(state: DrawFaceBox['state']): string {
   if (state === 'recognized') return 'bg-green-700/90';
   if (state === 'pending') return 'bg-amber-700/90';
@@ -185,6 +190,10 @@ export function DiemDanhWebcamPage() {
       setSelectedSessionId(sessions[0].id);
     }
   }, [sessions, selectedSessionId]);
+
+  useEffect(() => {
+    setSelectedSessionId('');
+  }, [selectedSectionId]);
 
   useEffect(() => {
     runtimeIdRef.current = runtimeId;
@@ -397,10 +406,22 @@ export function DiemDanhWebcamPage() {
         continue;
       }
 
+      const debugReason = face?.debug?.reason;
+      const shouldRejectNow = Boolean(debugReason && debugReason !== 'matched');
+      if (shouldRejectNow) {
+        labels.set(key, {
+          name: resolveRejectedText(debugReason),
+          state: 'rejected',
+          failCount: REJECT_FAIL_THRESHOLD,
+          expiry: now + REJECT_TTL_MS,
+        });
+        continue;
+      }
+
       const nextFailCount = (prev?.failCount ?? 0) + 1;
       if (nextFailCount >= REJECT_FAIL_THRESHOLD) {
         labels.set(key, {
-          name: 'Khong dung SV trong lop',
+          name: resolveRejectedText(debugReason),
           state: 'rejected',
           failCount: nextFailCount,
           expiry: now + REJECT_TTL_MS,
@@ -512,7 +533,14 @@ export function DiemDanhWebcamPage() {
           return;
         }
       } catch (statusError) {
-        if (statusError instanceof Error && statusError.message.includes('VALIDATION_ERROR')) {
+        if (
+          statusError instanceof Error
+          && (
+            statusError.message.includes('runtime_id không hợp lệ')
+            || statusError.message.includes('Runtime hiện tại không phải phiên điểm danh live')
+            || statusError.message.includes('Phiên điểm danh đã hết hiệu lực')
+          )
+        ) {
           cleanupRuntime();
           notify.warning('Phiên điểm danh đã hết hiệu lực, vui lòng bắt đầu lại');
           return;
@@ -585,6 +613,7 @@ export function DiemDanhWebcamPage() {
       const data = await startMutation.mutateAsync({
         mode: 'webcam',
         class_session_id: Number(selectedSessionId),
+        course_section_id: Number(selectedSectionId),
         rtsp_url: null,
       });
 
