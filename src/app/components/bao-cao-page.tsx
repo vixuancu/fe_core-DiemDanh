@@ -1,61 +1,62 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useAttendances } from '@/features/attendances/hooks/useAttendances';
 import { useCreditClasses } from '@/features/credit-classes/hooks/useCreditClasses';
-import { trangThaiLabels, trangThaiColors } from '@/shared/types';
-import { FileSpreadsheet, FileText, Download, BarChart3, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { FileSpreadsheet, BarChart3, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
 import { PortableDateInput, PortableSelect } from './ui/portable-form-controls';
 import { buildPaginationItems } from '@/shared/lib/pagination';
-
-const weeklyData = [
-  { tuan: 'Tuần 1', coMat: 85, tre: 8, vang: 7 },
-  { tuan: 'Tuần 2', coMat: 88, tre: 6, vang: 6 },
-  { tuan: 'Tuần 3', coMat: 82, tre: 10, vang: 8 },
-  { tuan: 'Tuần 4', coMat: 90, tre: 5, vang: 5 },
-  { tuan: 'Tuần 5', coMat: 87, tre: 7, vang: 6 },
-  { tuan: 'Tuần 6', coMat: 92, tre: 4, vang: 4 },
-  { tuan: 'Tuần 7', coMat: 89, tre: 6, vang: 5 },
-  { tuan: 'Tuần 8', coMat: 86, tre: 8, vang: 6 },
-];
+import {
+  useClassSummary,
+  useReportDetails,
+  useReportStats,
+  useWeeklyTrend,
+} from '@/features/reports/hooks/useReports';
 
 const perPageOptions = [10, 20, 30, 40];
 
 export function BaoCaoPage() {
   const { user } = useAuth();
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [dateFrom, setDateFrom] = useState(''); // Mặc định có thể nhập sau
+  const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
-  const isGiangVien = user?.role === 'giang_vien';
-  
-  // Fetch classes for dropdown & chart
+  const canFilterByLecturer = user?.role === 'giang_vien';
+
   const { data: classesData } = useCreditClasses({
-    giangVienId: isGiangVien ? user?.id : undefined,
+    giangVienId: canFilterByLecturer ? user?.id : undefined,
     perPage: 100
   });
   const myClasses = classesData?.data ?? [];
 
-  const selectedClass = myClasses.find(c => c.id === selectedClassId);
+  const reportFilter = useMemo(
+    () => ({
+      course_section_id: selectedClassId || undefined,
+      from_date: dateFrom || undefined,
+      to_date: dateTo || undefined,
+      page: currentPage,
+      per_page: perPage,
+    }),
+    [selectedClassId, dateFrom, dateTo, currentPage, perPage]
+  );
 
-  // Note: For large reports, we might just fetch a large "perPage"
-  const { data: attendancesData, isLoading } = useAttendances({
-    giangVienId: isGiangVien ? user?.id : undefined,
-    maLop: selectedClass?.maLop, // Báo cáo có thể chỉ tính theo mã lớp chứ ko phải ID hệ thống
-    tuNgay: dateFrom || undefined,
-    denNgay: dateTo || undefined,
-    page: currentPage,
-    perPage: perPage,
-  });
+  const { data: reportStatsData, isLoading: isLoadingStats } = useReportStats(reportFilter, showReport);
+  const { data: weeklyTrendData, isLoading: isLoadingWeekly } = useWeeklyTrend(reportFilter, showReport);
+  const { data: classSummaryData, isLoading: isLoadingClassSummary } = useClassSummary(
+    { from_date: dateFrom || undefined, to_date: dateTo || undefined },
+    showReport
+  );
+  const { data: reportDetailsData, isLoading: isLoadingDetails } = useReportDetails(reportFilter, showReport);
 
-  const reportData = attendancesData?.data ?? [];
+  const isLoading = isLoadingStats || isLoadingWeekly || isLoadingClassSummary || isLoadingDetails;
+
+  const reportData = reportDetailsData?.data ?? [];
   const meta = {
-    total: attendancesData?.total ?? 0,
-    page: attendancesData?.page ?? 1,
-    lastPage: attendancesData?.totalPages ?? 1,
+    total: reportDetailsData?.total ?? 0,
+    page: reportDetailsData?.page ?? 1,
+    lastPage: reportDetailsData?.totalPages ?? 1,
   };
 
   const paginationItems = React.useMemo(
@@ -69,49 +70,46 @@ export function BaoCaoPage() {
     }
   }, [currentPage, meta.lastPage]);
 
-  // Calculate stats using useQuery or just mock summary based on all
-  // Vì hiện tại API list trả theo trang, ta có thể phải fetch all records cho stats
-  // Nhưng để demo, ta mượn luôn mock dữ liệu giả lập cho charts 
-  // TODO: Gọi API GetReportStats thật
-  const reportStats = {
-    total: meta.total * 3, // Fake total number for UI demo if needed, or real from an aggregate API
-    coMat: Math.floor(meta.total * 0.8),
-    tre: Math.floor(meta.total * 0.1),
-    vang: Math.floor(meta.total * 0.1),
+  const reportStats = reportStatsData ?? {
+    total_records: 0,
+    co_mat: 0,
+    tre: 0,
+    vang: 0,
   };
-  
-  // Lấy dữ liệu biểu đồ mock
-  const classData = myClasses.map(l => ({
-    name: l.tenMonHoc.length > 15 ? l.tenMonHoc.substring(0, 15) + '...' : l.tenMonHoc,
-    fullName: l.tenMonHoc,
-    tyLe: Math.round(75 + Math.random() * 20),
-  }));
+
+  const classData = useMemo(
+    () =>
+      (classSummaryData ?? []).map((row) => {
+        const label = row.course_name || row.course_section_name;
+        return {
+          name: label.length > 18 ? `${label.slice(0, 18)}...` : label,
+          fullName: label,
+          tyLe: Number(row.attendance_rate ?? 0),
+        };
+      }),
+    [classSummaryData]
+  );
+
+  const weeklyData = useMemo(
+    () =>
+      (weeklyTrendData ?? []).map((w, idx) => ({
+        tuan: w.week_label || `Tuần ${idx + 1}`,
+        coMat: Number(w.co_mat ?? 0),
+        tre: Number(w.tre ?? 0),
+        vang: Number(w.vang ?? 0),
+      })),
+    [weeklyTrendData]
+  );
+
+  const chartTickInterval = weeklyData.length > 18 ? 2 : weeklyData.length > 10 ? 1 : 0;
+  const classChartHeight = Math.max(300, classData.length * 48);
 
   const handleCreateReport = () => {
     setShowReport(true);
     setCurrentPage(1);
   };
 
-  const handleExportCSV = () => {
-    const headers = ['STT', 'Mã SV', 'Họ tên', 'Môn học', 'Ngày', 'Thời gian', 'Trạng thái'];
-    const rows = reportData.map((d, i) => [
-      i + 1,
-      d.maSV,
-      d.hoTenSV,
-      d.tenMonHoc || d.maLop,
-      d.ngay,
-      d.thoiGian || '-',
-      trangThaiLabels[d.trangThai],
-    ]);
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bao-cao-diem-danh-${dateFrom || 'all'}-${dateTo || 'all'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const handleExportExcel = () => {};
 
   return (
     <div>
@@ -171,24 +169,24 @@ export function BaoCaoPage() {
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-xl p-5 border border-border text-center">
               <p className="text-3xl text-[#009dd9]">
-                {reportStats.total > 0 ? Math.round((reportStats.coMat / reportStats.total) * 1000) / 10 : 0}%
+                {reportStats.total_records > 0 ? Math.round((reportStats.co_mat / reportStats.total_records) * 1000) / 10 : 0}%
               </p>
               <p className="text-sm text-muted-foreground mt-1">Tỷ lệ có mặt</p>
             </div>
             <div className="bg-white rounded-xl p-5 border border-border text-center">
               <p className="text-3xl text-yellow-600">
-                {reportStats.total > 0 ? Math.round((reportStats.tre / reportStats.total) * 1000) / 10 : 0}%
+                {reportStats.total_records > 0 ? Math.round((reportStats.tre / reportStats.total_records) * 1000) / 10 : 0}%
               </p>
               <p className="text-sm text-muted-foreground mt-1">Tỷ lệ đi trễ</p>
             </div>
             <div className="bg-white rounded-xl p-5 border border-border text-center">
               <p className="text-3xl text-red-600">
-                {reportStats.total > 0 ? Math.round((reportStats.vang / reportStats.total) * 1000) / 10 : 0}%
+                {reportStats.total_records > 0 ? Math.round((reportStats.vang / reportStats.total_records) * 1000) / 10 : 0}%
               </p>
               <p className="text-sm text-muted-foreground mt-1">Tỷ lệ vắng</p>
             </div>
             <div className="bg-white rounded-xl p-5 border border-border text-center">
-              <p className="text-3xl">{reportStats.total}</p>
+              <p className="text-3xl">{reportStats.total_records}</p>
               <p className="text-sm text-muted-foreground mt-1">Tổng lượt điểm danh dự kiến</p>
             </div>
           </div>
@@ -200,8 +198,8 @@ export function BaoCaoPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={weeklyData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="tuan" />
-                  <YAxis />
+                  <XAxis dataKey="tuan" interval={chartTickInterval} minTickGap={18} />
+                  <YAxis domain={[0, 100]} />
                   <Tooltip />
                   <Legend />
                   <Line type="monotone" dataKey="coMat" name="Có mặt" stroke="#22c55e" strokeWidth={2} />
@@ -213,15 +211,20 @@ export function BaoCaoPage() {
 
             <div className="bg-white rounded-xl p-5 border border-border">
               <h3 className="mb-4">Tỷ lệ có mặt trung bình theo lớp (%)</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={classData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" domain={[0, 100]} />
-                  <YAxis dataKey="name" type="category" width={120} />
-                  <Tooltip formatter={(value: number) => [`${value}%`, 'Tỷ lệ có mặt']} />
-                  <Bar dataKey="tyLe" fill="#009dd9" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="max-h-[320px] overflow-y-auto pr-1">
+                <ResponsiveContainer width="100%" height={classChartHeight}>
+                  <BarChart data={classData} layout="vertical" margin={{ top: 8, right: 10, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" domain={[0, 100]} />
+                    <YAxis dataKey="name" type="category" width={160} />
+                    <Tooltip formatter={(value: number) => [`${value}%`, 'Tỷ lệ có mặt']} labelFormatter={(label) => {
+                      const found = classData.find((item) => item.name === label);
+                      return found?.fullName || label;
+                    }} />
+                    <Bar dataKey="tyLe" fill="#009dd9" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
@@ -231,17 +234,11 @@ export function BaoCaoPage() {
               <h3>Danh sách điểm danh chi tiết</h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleExportCSV}
+                  onClick={handleExportExcel}
                   disabled={reportData.length === 0}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition text-sm cursor-pointer disabled:opacity-50"
                 >
-                  <FileSpreadsheet className="w-4 h-4" /> Xuất CSV
-                </button>
-                <button 
-                  onClick={() => window.print()}
-                  disabled={reportData.length === 0}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer disabled:opacity-50">
-                  <FileText className="w-4 h-4" /> Xuất PDF
+                  <FileSpreadsheet className="w-4 h-4" /> Xuất Excel
                 </button>
               </div>
             </div>
@@ -266,14 +263,24 @@ export function BaoCaoPage() {
                     {reportData.map((dd, i) => (
                       <tr key={dd.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                         <td className="py-3 px-4">{(meta.page - 1) * perPage + i + 1}</td>
-                        <td className="py-3 px-4">{dd.maSV}</td>
-                        <td className="py-3 px-4">{dd.hoTenSV}</td>
-                        <td className="py-3 px-4">{dd.tenMonHoc || dd.maLop}</td>
-                        <td className="py-3 px-4">{dd.ngay}</td>
-                        <td className="py-3 px-4">{dd.thoiGian || '-'}</td>
+                        <td className="py-3 px-4">{dd.student_code}</td>
+                        <td className="py-3 px-4">{dd.student_name}</td>
+                        <td className="py-3 px-4">{dd.course_name || dd.course_section_name}</td>
+                        <td className="py-3 px-4">{dd.session_date}</td>
+                        <td className="py-3 px-4">{dd.attendance_time || '-'}</td>
                         <td className="py-3 px-4">
-                          <span className={`px-2 py-1 rounded text-xs ${trangThaiColors[dd.trangThai]}`}>
-                            {trangThaiLabels[dd.trangThai]}
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${
+                              dd.status_label === 'Có mặt'
+                                ? 'bg-green-100 text-green-700'
+                                : dd.status_label === 'Đi trễ'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : dd.status_label === 'Có phép'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {dd.status_label}
                           </span>
                         </td>
                       </tr>

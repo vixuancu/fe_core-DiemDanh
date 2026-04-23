@@ -10,34 +10,34 @@ export const reportKeys = {
   details: (filter: ReportFilter) => [...reportKeys.all, 'details', filter] as const,
 };
 
-export function useReportStats(filter: ReportFilter) {
+export function useReportStats(filter: ReportFilter, enabled = true) {
   return useQuery({
     queryKey: reportKeys.stats(filter),
     queryFn: () => reportService.getStats(filter),
-    placeholderData: (prev) => prev,
+    enabled,
   });
 }
 
-export function useWeeklyTrend(filter: ReportFilter) {
+export function useWeeklyTrend(filter: ReportFilter, enabled = true) {
   return useQuery({
     queryKey: reportKeys.weeklyTrend(filter),
     queryFn: () => reportService.getWeeklyTrend(filter),
-    placeholderData: (prev) => prev,
+    enabled,
   });
 }
 
-export function useClassSummary(filter: ReportFilter) {
+export function useClassSummary(filter: ReportFilter, enabled = true) {
   return useQuery({
     queryKey: reportKeys.classSummary(filter),
     queryFn: () => reportService.getClassSummary(filter),
-    placeholderData: (prev) => prev,
+    enabled,
   });
 }
 
-export function useReportDetails(filter: ReportFilter) {
+export function useReportDetails(filter: ReportFilter, enabled = true) {
   return useQuery({
     queryKey: reportKeys.details(filter),
     queryFn: () => reportService.getDetails(filter),
-    placeholderData: (prev) => prev,
+    enabled,
   });
 }
