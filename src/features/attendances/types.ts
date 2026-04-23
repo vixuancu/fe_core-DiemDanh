@@ -29,6 +29,7 @@ export interface AttendanceRecordResponse {
   status: number | null; // 1: C, 2: V, 3: M
   note: string | null;
   session_date: string;
+  attendance_created_at: string | null;
 }
 
 export interface StudentAttendanceMatrixResponse {

@@ -1,12 +1,38 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { useAttendances } from '@/features/attendances/hooks/useAttendances';
 import { useCreditClasses } from '@/features/credit-classes/hooks/useCreditClasses';
 import { trangThaiLabels, trangThaiColors } from '@/shared/types';
-import { Search, ChevronLeft, ChevronRight, Download, FileText, Loader2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Loader2, ChevronDown } from 'lucide-react';
 import { PortableDateInput, PortableSelect } from './ui/portable-form-controls';
 import type { TrangThaiDiemDanh } from '@/shared/types';
 import { buildPaginationItems } from '@/shared/lib/pagination';
+import { ClickAwayListener } from '@/shared/components/ClickAwayListener';
+import { useQuery } from '@tanstack/react-query';
+import { attendanceService } from '@/features/attendances/services';
+import type { DiemDanh } from '@/features/attendances/types';
+
+const statusMap: Record<number, TrangThaiDiemDanh> = {
+  1: 'co_mat',
+  2: 'vang',
+  3: 'tre',
+};
+
+const normalizeText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const matchesKeyword = (source: string, keyword: string) => {
+  const normalizedKeyword = normalizeText(keyword);
+  if (!normalizedKeyword) return true;
+  const sourceNormalized = normalizeText(source);
+  return normalizedKeyword
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((token) => sourceNormalized.includes(token));
+};
 
 const perPageOptions = [10, 20, 30, 40];
 
@@ -19,6 +45,8 @@ export function LichSuPage() {
   const [filterDateTo, setFilterDateTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [classDropdownOpen, setClassDropdownOpen] = useState(false);
+  const [classSearch, setClassSearch] = useState('');
 
   const isGiangVien = user?.role === 'giang_vien';
   
@@ -28,24 +56,107 @@ export function LichSuPage() {
     perPage: 100
   });
   const myClasses = classesData?.data ?? [];
+  const selectedClass = myClasses.find((m) => m.maLop === filterMaLop);
 
-  // Fetch paginated attendances matching filters
-  const { data: attendancesData, isLoading } = useAttendances({
-    giangVienId: isGiangVien ? user?.id : undefined,
-    maLop: filterMaLop || undefined,
-    search: search || undefined,
-    trangThai: filterTrangThai || undefined,
-    tuNgay: filterDateFrom || undefined,
-    denNgay: filterDateTo || undefined,
-    page: currentPage,
-    perPage: perPage
+  const filteredClasses = React.useMemo(() => {
+    const keyword = classSearch.trim();
+    if (!keyword) return myClasses;
+
+    return myClasses.filter((m) =>
+      matchesKeyword(`${m.tenMonHoc} ${m.maLop}`, keyword)
+    );
+  }, [myClasses, classSearch]);
+
+  const targetClasses = React.useMemo(() => {
+    if (filterMaLop) {
+      return myClasses.filter((m) => m.maLop === filterMaLop);
+    }
+    return myClasses;
+  }, [myClasses, filterMaLop]);
+
+  const { data: attendanceRows = [], isLoading } = useQuery({
+    queryKey: ['attendance-history-matrix', targetClasses.map((m) => m.id), filterDateFrom, filterDateTo],
+    enabled: targetClasses.length > 0,
+    queryFn: async () => {
+      const settled = await Promise.allSettled(
+        targetClasses.map(async (creditClass) => {
+          const matrix = await attendanceService.getMatrix(
+            creditClass.id,
+            filterDateFrom || undefined,
+            filterDateTo || undefined,
+          );
+
+          const rows: DiemDanh[] = [];
+          matrix.students.forEach((student) => {
+            student.records.forEach((record) => {
+              if (record.status == null) return;
+              const mappedStatus = statusMap[record.status];
+              if (!mappedStatus) return;
+
+              const [datePartRaw, timePartRaw = ''] = record.session_date.split('T');
+              const datePart = datePartRaw || record.session_date;
+              const createdAt = record.attendance_created_at ?? '';
+              const createdTime = createdAt.includes('T')
+                ? (createdAt.split('T')[1] || '').slice(0, 8)
+                : '';
+              const sessionTime = timePartRaw.slice(0, 8);
+              const timePart = createdTime || sessionTime;
+
+              rows.push({
+                id: String(record.id ?? `${creditClass.id}-${student.student_id}-${record.class_session_id}`),
+                sinhVienId: String(student.student_id),
+                maSV: student.student_code,
+                hoTenSV: student.full_name,
+                lichHocId: String(record.class_session_id),
+                tenMonHoc: creditClass.tenMonHoc,
+                maLop: creditClass.maLop,
+                ngay: datePart,
+                thoiGian: timePart && timePart !== '00:00:00' ? timePart : '',
+                trangThai: mappedStatus,
+                ghiChu: record.note ?? undefined,
+              });
+            });
+          });
+          return rows;
+        }),
+      );
+
+      return settled.flatMap((item) => (item.status === 'fulfilled' ? item.value : []));
+    },
   });
 
-  const attendances = attendancesData?.data ?? [];
+  const filteredAttendances = React.useMemo(() => {
+    return attendanceRows
+      .filter((record) => {
+        if (filterTrangThai && record.trangThai !== filterTrangThai) return false;
+        if (filterDateFrom && record.ngay < filterDateFrom) return false;
+        if (filterDateTo && record.ngay > filterDateTo) return false;
+        if (
+          search &&
+          !matchesKeyword(
+            `${record.maSV} ${record.hoTenSV} ${record.maLop} ${record.tenMonHoc}`,
+            search,
+          )
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.ngay === b.ngay) return b.maSV.localeCompare(a.maSV);
+        return b.ngay.localeCompare(a.ngay);
+      });
+  }, [attendanceRows, filterTrangThai, filterDateFrom, filterDateTo, search]);
+
+  const totalRecords = filteredAttendances.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / perPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const attendances = filteredAttendances.slice((safePage - 1) * perPage, safePage * perPage);
+
   const meta = {
-    total: attendancesData?.total ?? 0,
-    page: attendancesData?.page ?? 1,
-    lastPage: attendancesData?.totalPages ?? 1,
+    total: totalRecords,
+    page: safePage,
+    lastPage: totalPages,
   };
 
   const paginationItems = React.useMemo(
@@ -63,33 +174,6 @@ export function LichSuPage() {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <h2>Lịch sử điểm danh</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              let csv = '\uFEFF';
-              csv += 'STT,Mã SV,Họ tên,Lớp tín chỉ,Ngày,Thời gian,Trạng thái\n';
-              attendances.forEach((dd, i) => {
-                csv += `${i + 1},${dd.maSV},${dd.hoTenSV},${dd.maLop},${dd.ngay},${dd.thoiGian || '-'},${trangThaiLabels[dd.trangThai]}\n`;
-              });
-              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-              const link = document.createElement('a');
-              link.href = URL.createObjectURL(blob);
-              link.download = 'lich-su-diem-danh.csv';
-              link.click();
-            }}
-            disabled={attendances.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Download className="w-4 h-4" /> Xuất CSV
-          </button>
-          <button
-            onClick={() => window.print()}
-            disabled={attendances.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white text-sm hover:bg-[#0088be] transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <FileText className="w-4 h-4" /> Xuất PDF
-          </button>
-        </div>
       </div>
 
       {/* Filters */}
@@ -105,15 +189,84 @@ export function LichSuPage() {
              />
           </div>
           <div className="min-w-[220px]">
-            <PortableSelect
-              value={filterMaLop}
-              onChange={e => { setFilterMaLop(e.target.value); setCurrentPage(1); }}
-              className="w-full px-4 pr-10 py-2 rounded-lg border border-border text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
-              labelClassName="text-sm"
+            <ClickAwayListener
+              onClickAway={() => {
+                setClassDropdownOpen(false);
+                setClassSearch('');
+              }}
             >
-              <option value="">Tất cả lớp tín chỉ</option>
-              {myClasses.map(m => <option key={m.id} value={m.maLop}>{m.tenMonHoc} ({m.maLop})</option>)}
-            </PortableSelect>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClassDropdownOpen((prev) => {
+                      const nextOpen = !prev;
+                      if (nextOpen) setClassSearch('');
+                      return nextOpen;
+                    });
+                  }}
+                  className="w-full flex items-center justify-between px-4 pr-3 py-2 rounded-lg border border-border text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30 text-left"
+                >
+                  <span className="truncate">
+                    {selectedClass
+                      ? `${selectedClass.tenMonHoc} (${selectedClass.maLop})`
+                      : 'Tất cả lớp tín chỉ'}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${classDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {classDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border shadow-xl rounded-lg z-50 max-h-72 flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-2 border-b border-border flex items-center sticky top-0 bg-white z-10 shrink-0">
+                      <Search className="w-4 h-4 text-muted-foreground ml-2 mr-2 shrink-0" />
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Tìm theo tên hoặc mã lớp..."
+                        className="w-full text-sm outline-none bg-transparent py-1"
+                        value={classSearch}
+                        onChange={(e) => setClassSearch(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="overflow-y-auto p-1 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterMaLop('');
+                          setCurrentPage(1);
+                          setClassDropdownOpen(false);
+                          setClassSearch('');
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${filterMaLop === '' ? 'bg-[#0b69d0] text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                      >
+                        Tất cả lớp tín chỉ
+                      </button>
+
+                      {filteredClasses.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">Không tìm thấy lớp tín chỉ</div>
+                      ) : (
+                        filteredClasses.map((m) => (
+                          <button
+                            type="button"
+                            key={m.id}
+                            onClick={() => {
+                              setFilterMaLop(m.maLop);
+                              setCurrentPage(1);
+                              setClassDropdownOpen(false);
+                              setClassSearch('');
+                            }}
+                            className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${filterMaLop === m.maLop ? 'bg-[#0b69d0] text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                          >
+                            {m.tenMonHoc} ({m.maLop})
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ClickAwayListener>
           </div>
           <div className="min-w-[220px]">
             <PortableSelect
