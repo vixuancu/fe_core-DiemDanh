@@ -5,6 +5,7 @@ import { FileSpreadsheet, BarChart3, ChevronLeft, ChevronRight, Loader2 } from '
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line } from 'recharts';
 import { PortableDateInput, PortableSelect } from './ui/portable-form-controls';
 import { buildPaginationItems } from '@/shared/lib/pagination';
+import { reportService } from '@/features/reports/services';
 import {
   useClassSummary,
   useReportDetails,
@@ -22,6 +23,7 @@ export function BaoCaoPage() {
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   const canFilterByLecturer = user?.role === 'giang_vien';
 
@@ -109,7 +111,64 @@ export function BaoCaoPage() {
     setCurrentPage(1);
   };
 
-  const handleExportExcel = () => {};
+  const handleExportExcel = async () => {
+    if (isExportingExcel || reportData.length === 0) return;
+
+    try {
+      setIsExportingExcel(true);
+
+      const exportRows = [] as typeof reportData;
+      const firstPage = await reportService.getDetails({
+        ...reportFilter,
+        page: 1,
+        per_page: 100,
+      });
+
+      exportRows.push(...firstPage.data);
+
+      for (let page = 2; page <= firstPage.totalPages; page += 1) {
+        const nextPage = await reportService.getDetails({
+          ...reportFilter,
+          page,
+          per_page: 100,
+        });
+        exportRows.push(...nextPage.data);
+      }
+
+      const XLSX = await import('xlsx');
+      const headers = [
+        'STT',
+        'Mã SV',
+        'Họ tên',
+        'Môn học',
+        'Lớp tín chỉ',
+        'Ngày',
+        'Thời gian',
+        'Trạng thái',
+      ];
+
+      const body = exportRows.map((row, idx) => [
+        idx + 1,
+        row.student_code,
+        row.student_name,
+        row.course_name,
+        row.course_section_name,
+        row.session_date,
+        row.attendance_time ?? '-',
+        row.status_label,
+      ]);
+
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...body]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'bao_cao_diem_danh');
+
+      const from = dateFrom || 'all';
+      const to = dateTo || 'all';
+      XLSX.writeFile(workbook, `bao-cao-diem-danh-${from}-${to}.xlsx`);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
 
   return (
     <div>
@@ -235,10 +294,11 @@ export function BaoCaoPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleExportExcel}
-                  disabled={reportData.length === 0}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition text-sm cursor-pointer disabled:opacity-50"
+                  disabled={reportData.length === 0 || isExportingExcel}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-green-500 text-green-600 hover:bg-green-50 transition text-sm cursor-pointer disabled:opacity-50"
                 >
-                  <FileSpreadsheet className="w-4 h-4" /> Xuất Excel
+                  {isExportingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                  Xuất Excel
                 </button>
               </div>
             </div>
