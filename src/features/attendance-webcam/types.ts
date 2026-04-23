@@ -1,6 +1,7 @@
 export interface AttendanceWebcamStartRequest {
   mode: 'webcam';
   class_session_id: number;
+  course_section_id: number;
   rtsp_url?: null;
 }
 
@@ -45,6 +46,10 @@ export interface AttendanceWebcamFace {
     h?: number;
     xCenter?: number;
     yCenter?: number;
+  };
+  debug?: {
+    reason?: string;
+    [key: string]: unknown;
   };
 }
 

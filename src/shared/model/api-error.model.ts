@@ -29,10 +29,13 @@ class ApiError extends Error {
 export { ApiError };
 
 function translateError(payload: Partial<ApiEnvelope<unknown>>): string {
-    const rawError = payload.error_code || payload.message;
-    if (!rawError) return 'Có lỗi xảy ra từ máy chủ';
+    const message = (payload.message || '').trim();
+    if (message) return message;
 
-    return ERROR_MESSAGES[rawError] || rawError;
+    const errorCode = (payload.error_code || '').trim();
+    if (!errorCode) return 'Có lỗi xảy ra từ máy chủ';
+
+    return ERROR_MESSAGES[errorCode] || errorCode;
 }
 
 export async function parseEnvelope<T>(res: Response): Promise<ApiEnvelope<T>> {
