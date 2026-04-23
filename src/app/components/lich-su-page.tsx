@@ -95,7 +95,12 @@ export function LichSuPage() {
 
               const [datePartRaw, timePartRaw = ''] = record.session_date.split('T');
               const datePart = datePartRaw || record.session_date;
-              const timePart = timePartRaw.slice(0, 8);
+              const createdAt = record.attendance_created_at ?? '';
+              const createdTime = createdAt.includes('T')
+                ? (createdAt.split('T')[1] || '').slice(0, 8)
+                : '';
+              const sessionTime = timePartRaw.slice(0, 8);
+              const timePart = createdTime || sessionTime;
 
               rows.push({
                 id: String(record.id ?? `${creditClass.id}-${student.student_id}-${record.class_session_id}`),
