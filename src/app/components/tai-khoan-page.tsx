@@ -219,29 +219,6 @@ export function TaiKhoanPage() {
         </div>
       )}
 
-      {/* Thống kê nhanh */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-[#009dd9]">{stats.total}</p>
-          <p className="text-xs text-muted-foreground mt-1">Tổng tài khoản</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-blue-600">{stats.giaoVu}</p>
-          <p className="text-xs text-muted-foreground mt-1">Giáo vụ</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-cyan-600">{stats.giangVien}</p>
-          <p className="text-xs text-muted-foreground mt-1">Giảng viên</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-green-600">{stats.active}</p>
-          <p className="text-xs text-muted-foreground mt-1">Hoạt động</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-red-600">{stats.locked}</p>
-          <p className="text-xs text-muted-foreground mt-1">Đã khóa</p>
-        </div>
-      </div>
 
       {/* Filters */}
       <div className="bg-white rounded-xl p-4 border border-border mb-4 flex items-center gap-4 flex-wrap">
@@ -267,7 +244,7 @@ export function TaiKhoanPage() {
         </PortableSelect>
         <PortableSelect
           value={filterTrangThai}
-          onChange={e => { setFilterTrangThai(e.target.value as 'active'|'locked'|''); setCurrentPage(1); }}
+          onChange={e => { setFilterTrangThai(e.target.value as 'active' | 'locked' | ''); setCurrentPage(1); }}
           className="px-4 py-2 rounded-lg border border-border text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30 min-w-[180px]"
           labelClassName="text-sm"
         >
@@ -340,18 +317,18 @@ export function TaiKhoanPage() {
                           <KeyRound className="w-4 h-4 text-[#009dd9]" />
                         </button>
                         <button 
-                          onClick={() => handleToggleStatus(tk.id, tk.trangThai)} 
-                          className="p-1.5 rounded hover:bg-muted transition cursor-pointer" 
-                          title={tk.trangThai === 'active' ? 'Khóa tài khoản' : 'Mở khóa'}
-                        >
-                          {tk.trangThai === 'active' ? <Lock className="w-4 h-4 text-orange-500" /> : <Unlock className="w-4 h-4 text-green-500" />}
-                        </button>
-                        <button 
                           onClick={() => handleDelete(tk.id)}
                           className="p-1.5 rounded hover:bg-red-50 transition cursor-pointer" 
                           title="Xóa tài khoản"
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                        <button 
+                          onClick={() => handleToggleStatus(tk.id, tk.trangThai)}
+                          className="p-1.5 rounded hover:bg-muted transition cursor-pointer" 
+                          title={tk.trangThai === 'active' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                        >
+                          {tk.trangThai === 'active' ? <Lock className="w-4 h-4 text-orange-500" /> : <Unlock className="w-4 h-4 text-green-600" />}
                         </button>
                       </div>
                     </td>

@@ -973,20 +973,6 @@ export function SinhVienPage() {
 
       {isError && <ErrorState message={(error as Error)?.message ?? 'Đã xảy ra lỗi khi tải dữ liệu'} />}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-[#009dd9]">{summary.total}</p>
-          <p className="text-xs text-muted-foreground mt-1">Tổng sinh viên</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-green-600">{summary.active}</p>
-          <p className="text-xs text-muted-foreground mt-1">Hoạt động</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-red-600">{summary.locked}</p>
-          <p className="text-xs text-muted-foreground mt-1">Đã khóa</p>
-        </div>
-      </div>
 
       <div className="bg-white rounded-xl p-4 border border-border mb-4 flex items-center gap-4 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -1072,20 +1058,22 @@ export function SinhVienPage() {
                           <Edit className="w-4 h-4 text-muted-foreground" />
                         </button>
                         <button
+                          onClick={() => handleToggleLock(item)}
+                          className="p-1.5 rounded hover:bg-muted transition cursor-pointer"
+                          title={item.trangThai === 'active' ? 'Khóa sinh viên' : 'Mở khóa sinh viên'}
+                        >
+                          {item.trangThai === 'active' ? (
+                            <Lock className="w-4 h-4 text-orange-500" />
+                          ) : (
+                            <Unlock className="w-4 h-4 text-green-600" />
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleDelete(item)}
                           className="p-1.5 rounded hover:bg-red-50 transition cursor-pointer"
                           title="Xóa cứng"
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleLock(item)}
-                          className="p-1.5 rounded hover:bg-muted transition cursor-pointer"
-                          title={item.trangThai === 'active' ? 'Khóa sinh viên' : 'Mở khóa sinh viên'}
-                        >
-                          {item.trangThai === 'active'
-                            ? <Lock className="w-4 h-4 text-orange-500" />
-                            : <Unlock className="w-4 h-4 text-green-600" />}
                         </button>
                       </div>
                     </td>
