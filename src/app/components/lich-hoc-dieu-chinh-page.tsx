@@ -4,9 +4,15 @@ import { useLocation, useNavigate } from "react-router";
 import {
   useCreditClasses,
   useCreditClassSessions,
+  useCreditClassFormOptions,
   useUpdateCreditClassSession,
 } from "@/features/credit-classes/hooks/useCreditClasses";
-import type { BuoiHocStatus } from "@/features/credit-classes/types";
+import type {
+  BuoiHocStatus,
+  LopTinChi,
+  LopTinChiSchedule,
+  LopTinChiBuoiHoc,
+} from "@/features/credit-classes/types";
 import { PortableSelect } from "./ui/portable-form-controls";
 import { notify } from "@/shared/lib/notify";
 
@@ -38,6 +44,67 @@ function ErrorState({ message }: { message: string }) {
   );
 }
 
+function formatYmd(value?: string): string {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
+
+function isPeriodOverlap(
+  leftStart: number,
+  leftCount: number,
+  rightStart: number,
+  rightCount: number,
+): boolean {
+  const leftEnd = leftStart + leftCount - 1;
+  const rightEnd = rightStart + rightCount - 1;
+  return leftStart <= rightEnd && rightStart <= leftEnd;
+}
+
+function getDefaultScheduleRows(lop: LopTinChi): LopTinChiSchedule[] {
+  if (lop.schedules && lop.schedules.length > 0) return lop.schedules;
+  return [
+    {
+      dayOfWeek: lop.dayOfWeek,
+      startPeriod: lop.startPeriod,
+      numberOfPeriods: lop.numberOfPeriods,
+      roomId: lop.roomId,
+      roomName: lop.tenPhongHoc,
+      userId: lop.giangVienId,
+      userFullName: lop.tenGiangVien,
+    },
+  ];
+}
+
+function getSessionDayOfWeek(sessionDate?: string): number | null {
+  if (!sessionDate) return null;
+  const d = new Date(sessionDate);
+  if (Number.isNaN(d.getTime())) return null;
+  const weekday = d.getDay();
+  return weekday === 0 ? 8 : weekday + 1;
+}
+
+function getLessonScheduleForSession(
+  section: LopTinChi,
+  session: LopTinChiBuoiHoc,
+): LopTinChiSchedule | undefined {
+  const schedules = getDefaultScheduleRows(section);
+  const sessionDayOfWeek = getSessionDayOfWeek(session.sessionDate);
+  if (!sessionDayOfWeek) return schedules[0];
+
+  const sameDaySchedules = schedules.filter(
+    (schedule) => schedule.dayOfWeek === sessionDayOfWeek,
+  );
+
+  if (session.roomId) {
+    const exactRoomSchedule = sameDaySchedules.find(
+      (schedule) => schedule.roomId === session.roomId,
+    );
+    if (exactRoomSchedule) return exactRoomSchedule;
+  }
+
+  return sameDaySchedules[0] ?? schedules[0];
+}
+
 export function LichHocDieuChinhPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,6 +116,7 @@ export function LichHocDieuChinhPage() {
     {},
   );
   const [editNote, setEditNote] = useState<Record<string, string>>({});
+  const [editRoom, setEditRoom] = useState<Record<string, string>>({});
   const classDropdownRef = useRef<HTMLDivElement>(null);
   const hasInitializedDefaultSelectionRef = useRef(false);
 
@@ -64,6 +132,8 @@ export function LichHocDieuChinhPage() {
     isError: isSessionsError,
     error: sessionsError,
   } = useCreditClassSessions(selectedSectionId);
+
+  const { data: formOptions } = useCreditClassFormOptions();
 
   const { mutate: updateSession, isPending: isUpdating } =
     useUpdateCreditClassSession();
@@ -94,14 +164,17 @@ export function LichHocDieuChinhPage() {
   useEffect(() => {
     const statusMap: Record<string, BuoiHocStatus> = {};
     const noteMap: Record<string, string> = {};
+    const roomMap: Record<string, string> = {};
 
     sessions.forEach((session) => {
       statusMap[session.id] = session.status;
       noteMap[session.id] = session.note ?? "";
+      roomMap[session.id] = session.roomId ?? "";
     });
 
     setEditStatus(statusMap);
     setEditNote(noteMap);
+    setEditRoom(roomMap);
   }, [sessions]);
 
   const filteredSessions = useMemo(() => {
@@ -161,10 +234,106 @@ export function LichHocDieuChinhPage() {
     });
   }, [classesData?.data, classInput, selectedClass]);
 
+  const roomAvailabilityBySession = useMemo(() => {
+    const rooms = formOptions?.rooms ?? [];
+    const classes = classesData?.data ?? [];
+    const selectedSection = classes.find(
+      (item) => item.id === selectedSectionId,
+    );
+
+    const availability = new Map<string, Array<{ id: string; name: string }>>();
+
+    if (!selectedSection) return availability;
+
+    sessions.forEach((session) => {
+      const selectedSchedule = getLessonScheduleForSession(
+        selectedSection,
+        session,
+      );
+      if (!selectedSchedule) {
+        availability.set(session.id, rooms);
+        return;
+      }
+
+      const sessionDayOfWeek = getSessionDayOfWeek(session.sessionDate);
+      if (!sessionDayOfWeek) {
+        availability.set(session.id, rooms);
+        return;
+      }
+
+      const sessionDate = formatYmd(session.sessionDate);
+      const occupiedRoomIds = new Set<string>();
+
+      classes.forEach((lop) => {
+        if (lop.id === selectedSection.id) return;
+
+        const startDate = formatYmd(lop.startDate);
+        const endDate = formatYmd(lop.endDate);
+        if (!startDate || !endDate || !sessionDate) return;
+        if (sessionDate < startDate || sessionDate > endDate) return;
+
+        getDefaultScheduleRows(lop).forEach((schedule) => {
+          if (schedule.dayOfWeek !== sessionDayOfWeek) return;
+          if (
+            !isPeriodOverlap(
+              selectedSchedule.startPeriod,
+              selectedSchedule.numberOfPeriods,
+              schedule.startPeriod,
+              schedule.numberOfPeriods,
+            )
+          ) {
+            return;
+          }
+
+          if (schedule.roomId) {
+            occupiedRoomIds.add(schedule.roomId);
+          }
+        });
+      });
+
+      const currentRoomId = session.roomId || selectedSchedule.roomId || "";
+      const availableRooms = rooms.filter(
+        (room) => !occupiedRoomIds.has(room.id) || room.id === currentRoomId,
+      );
+      availability.set(session.id, availableRooms);
+    });
+
+    return availability;
+  }, [classesData?.data, formOptions?.rooms, selectedSectionId, sessions]);
+
+  const getRoomOptionsForSession = (sessionId: string) => {
+    const options =
+      roomAvailabilityBySession.get(sessionId) ?? formOptions?.rooms ?? [];
+    const currentRoomId =
+      editRoom[sessionId] ??
+      sessions.find((item) => item.id === sessionId)?.roomId ??
+      "";
+
+    if (!currentRoomId) return options;
+    if (options.some((item) => item.id === currentRoomId)) return options;
+
+    const currentRoom = (formOptions?.rooms ?? []).find(
+      (room) => room.id === currentRoomId,
+    );
+    return currentRoom ? [currentRoom, ...options] : options;
+  };
+
   const handleSave = (sessionId: string) => {
     const status = editStatus[sessionId];
     if (!selectedSectionId || !status) {
       notify.error("Thiếu thông tin cập nhật buổi học");
+      return;
+    }
+
+    const roomId = editRoom[sessionId] ?? "";
+    const allowedRooms = getRoomOptionsForSession(sessionId);
+    if (!roomId) {
+      notify.error("Vui lòng chọn phòng học hợp lệ");
+      return;
+    }
+
+    if (!allowedRooms.some((room) => room.id === roomId)) {
+      notify.error("Phòng học đã được sử dụng trong khung giờ này");
       return;
     }
 
@@ -174,6 +343,7 @@ export function LichHocDieuChinhPage() {
       dto: {
         status,
         note: editNote[sessionId] ?? "",
+        roomId,
       },
     });
   };
@@ -337,7 +507,24 @@ export function LichHocDieuChinhPage() {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        {item.roomName || "Chưa có phòng"}
+                        <PortableSelect
+                          value={editRoom[item.id] ?? item.roomId ?? ""}
+                          onChange={(e) =>
+                            setEditRoom((prev) => ({
+                              ...prev,
+                              [item.id]: e.target.value,
+                            }))
+                          }
+                          className="w-full min-w-[140px] px-3 py-2 rounded-lg border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-[#009dd9]/30"
+                          labelClassName="text-sm"
+                        >
+                          <option value="">Chọn phòng học</option>
+                          {getRoomOptionsForSession(item.id).map((room) => (
+                            <option key={room.id} value={room.id}>
+                              {room.name}
+                            </option>
+                          ))}
+                        </PortableSelect>
                       </td>
                       <td className="py-3 px-4">
                         <PortableSelect

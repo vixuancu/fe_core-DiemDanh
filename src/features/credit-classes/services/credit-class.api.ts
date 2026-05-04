@@ -110,6 +110,8 @@ interface CourseSectionSessionUpdateResponse {
   status: number;
   status_label: string;
   note?: string | null;
+  room_id?: number | null;
+  room_name?: string | null;
 }
 
 class ApiError extends Error {
@@ -237,6 +239,8 @@ function mapUpdatedSession(
     status: mapSessionStatus(item.status),
     statusLabel: item.status_label,
     note: item.note ?? undefined,
+    roomId: item.room_id != null ? String(item.room_id) : base.roomId,
+    roomName: item.room_name ?? base.roomName,
   };
 }
 
@@ -445,6 +449,7 @@ export const creditClassApi: ICreditClassService = {
       body: JSON.stringify({
         status: toSessionStatusCode(dto.status),
         note: dto.note ?? null,
+        room_id: dto.roomId ? Number(dto.roomId) : undefined,
       }),
     });
     const payload =
