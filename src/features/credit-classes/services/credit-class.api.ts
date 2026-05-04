@@ -1,7 +1,10 @@
-import { config } from '@/shared/config/env';
-import { forceLogout, getAuthHeaders } from '@/features/auth/session';
-import { parseEnvelope, parseListEnvelope } from '@/shared/model/api-error.model';
-import type { ICreditClassService } from './credit-class.service';
+import { config } from "@/shared/config/env";
+import { forceLogout, getAuthHeaders } from "@/features/auth/session";
+import {
+  parseEnvelope,
+  parseListEnvelope,
+} from "@/shared/model/api-error.model";
+import type { ICreditClassService } from "./credit-class.service";
 import type {
   LopTinChiBuoiHoc,
   UpdateLopTinChiBuoiHocDto,
@@ -14,8 +17,8 @@ import type {
   LopTinChi,
   LopTinChiSchedule,
   UpdateLopTinChiDto,
-} from '../types';
-import type { PaginatedResult } from '@/shared/types';
+} from "../types";
+import type { PaginatedResult } from "@/shared/types";
 
 const API_URL = `${config.apiBaseUrl}/course-sections`;
 
@@ -125,7 +128,7 @@ function mapCourseSection(item: CourseSectionResponse): LopTinChi {
     courseId: String(item.course_id),
     tenMonHoc: item.course_name,
     giangVienId: String(item.user_id),
-    tenGiangVien: item.user_full_name || 'Chưa rõ',
+    tenGiangVien: item.user_full_name || "Chưa rõ",
     roomId: String(item.room_id),
     tenPhongHoc: item.room_name,
     dayOfWeek: item.day_of_week,
@@ -136,12 +139,16 @@ function mapCourseSection(item: CourseSectionResponse): LopTinChi {
     startTime: item.start_time,
     endTime: item.end_time,
     siSo: item.si_so,
-    schedules: (item.schedules ?? []).map((schedule) => mapCourseSectionSchedule(schedule)),
+    schedules: (item.schedules ?? []).map((schedule) =>
+      mapCourseSectionSchedule(schedule),
+    ),
     // hocKy: item.hoc_ky,
   };
 }
 
-function mapCourseSectionSchedule(item: CourseSectionScheduleResponse): LopTinChiSchedule {
+function mapCourseSectionSchedule(
+  item: CourseSectionScheduleResponse,
+): LopTinChiSchedule {
   return {
     id: String(item.id),
     userId: item.user_id != null ? String(item.user_id) : undefined,
@@ -159,16 +166,20 @@ function mapCourseSectionSchedule(item: CourseSectionScheduleResponse): LopTinCh
   };
 }
 
-function mapCourseSectionStudent(item: CourseSectionStudentResponse): CreditClassStudent {
+function mapCourseSectionStudent(
+  item: CourseSectionStudentResponse,
+): CreditClassStudent {
   return {
     id: String(item.id),
     maSV: item.student_code,
     hoTen: item.full_name,
-    lopHanhChinh: item.administrative_class_name || 'Chưa phân lớp',
+    lopHanhChinh: item.administrative_class_name || "Chưa phân lớp",
   };
 }
 
-function mapImportResult(item: BackendImportResult): CreditClassStudentImportResult {
+function mapImportResult(
+  item: BackendImportResult,
+): CreditClassStudentImportResult {
   return {
     totalRows: item.total_rows,
     importedCount: item.imported_count,
@@ -182,20 +193,26 @@ function mapImportResult(item: BackendImportResult): CreditClassStudentImportRes
   };
 }
 
-function mapSessionStatus(value: number): LopTinChiBuoiHoc['status'] {
-  if (value === 2) return 'da_xong';
-  if (value === 3) return 'nghi';
-  if (value === 4) return 'bu';
-  return 'da_xong';
+function mapSessionStatus(value: number): LopTinChiBuoiHoc["status"] {
+  if (value === 0) return "chua_xong";
+  if (value === 2) return "da_xong";
+  if (value === 3) return "nghi";
+  if (value === 4) return "bu";
+  // Nếu có trạng thái 1 (đang diễn ra), có thể bổ sung ở đây nếu cần
+  return "chua_xong";
 }
 
-function toSessionStatusCode(value: UpdateLopTinChiBuoiHocDto['status']): number {
-  if (value === 'da_xong') return 2;
-  if (value === 'nghi') return 3;
+function toSessionStatusCode(
+  value: UpdateLopTinChiBuoiHocDto["status"],
+): number {
+  if (value === "da_xong") return 2;
+  if (value === "nghi") return 3;
   return 4;
 }
 
-function mapCourseSectionSession(item: CourseSectionSessionResponse): LopTinChiBuoiHoc {
+function mapCourseSectionSession(
+  item: CourseSectionSessionResponse,
+): LopTinChiBuoiHoc {
   return {
     id: String(item.id),
     courseSectionId: String(item.course_section_id),
@@ -258,18 +275,19 @@ function mapUpdatePayload(dto: UpdateLopTinChiDto) {
   if (dto.startDate !== undefined) payload.start_date = dto.startDate;
   if (dto.endDate !== undefined) payload.end_date = dto.endDate;
   if (dto.startPeriod !== undefined) payload.start_period = dto.startPeriod;
-  if (dto.numberOfPeriods !== undefined) payload.number_of_periods = dto.numberOfPeriods;
+  if (dto.numberOfPeriods !== undefined)
+    payload.number_of_periods = dto.numberOfPeriods;
   payload.start_time = null;
   payload.end_time = null;
   if (dto.schedules !== undefined) {
     payload.schedules = dto.schedules.map((schedule) => {
       const schedulePayload: Record<string, unknown> = {
-      day_of_week: schedule.dayOfWeek,
-      start_period: schedule.startPeriod,
-      number_of_periods: schedule.numberOfPeriods,
-      start_time: null,
-      end_time: null,
-      room_id: schedule.roomId ? Number(schedule.roomId) : undefined,
+        day_of_week: schedule.dayOfWeek,
+        start_period: schedule.startPeriod,
+        number_of_periods: schedule.numberOfPeriods,
+        start_time: null,
+        end_time: null,
+        room_id: schedule.roomId ? Number(schedule.roomId) : undefined,
       };
 
       const userId = schedule.userId ?? dto.giangVienId;
@@ -286,10 +304,13 @@ function mapUpdatePayload(dto: UpdateLopTinChiDto) {
 export const creditClassApi: ICreditClassService = {
   async list(filter: CreditClassFilter): Promise<PaginatedResult<LopTinChi>> {
     const params = new URLSearchParams();
-    if (filter.search) params.set('search', filter.search);
-    params.set('is_cancel', String(typeof filter.isCancel === 'boolean' ? filter.isCancel : false));
-    params.set('page', String(filter.page ?? 1));
-    params.set('page_size', String(filter.perPage ?? 10));
+    if (filter.search) params.set("search", filter.search);
+    params.set(
+      "is_cancel",
+      String(typeof filter.isCancel === "boolean" ? filter.isCancel : false),
+    );
+    params.set("page", String(filter.page ?? 1));
+    params.set("page_size", String(filter.perPage ?? 10));
 
     const res = await fetch(`${API_URL}?${params.toString()}`, {
       headers: getAuthHeaders(),
@@ -307,8 +328,8 @@ export const creditClassApi: ICreditClassService = {
 
   async create(dto: CreateLopTinChiDto): Promise<LopTinChi> {
     const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      method: "POST",
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(mapCreatePayload(dto)),
     });
     const payload = await parseEnvelope<CourseSectionResponse>(res);
@@ -317,8 +338,8 @@ export const creditClassApi: ICreditClassService = {
 
   async update(id: string, dto: UpdateLopTinChiDto): Promise<LopTinChi> {
     const res = await fetch(`${API_URL}/${id}`, {
-      method: 'PATCH',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      method: "PATCH",
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(mapUpdatePayload(dto)),
     });
     const payload = await parseEnvelope<CourseSectionResponse>(res);
@@ -327,7 +348,7 @@ export const creditClassApi: ICreditClassService = {
 
   async delete(id: string): Promise<void> {
     const res = await fetch(`${API_URL}/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: getAuthHeaders(),
     });
     await parseEnvelope<void>(res);
@@ -340,21 +361,36 @@ export const creditClassApi: ICreditClassService = {
     const payload = await parseEnvelope<CourseSectionFormOptionsResponse>(res);
 
     return {
-      courses: payload.data.courses.map((item) => ({ id: String(item.id), name: item.name })),
-      lecturers: payload.data.lecturers.map((item) => ({ id: String(item.id), name: item.name })),
-      rooms: payload.data.rooms.map((item) => ({ id: String(item.id), name: item.name })),
+      courses: payload.data.courses.map((item) => ({
+        id: String(item.id),
+        name: item.name,
+      })),
+      lecturers: payload.data.lecturers.map((item) => ({
+        id: String(item.id),
+        name: item.name,
+      })),
+      rooms: payload.data.rooms.map((item) => ({
+        id: String(item.id),
+        name: item.name,
+      })),
     };
   },
 
-  async listStudents(sectionId: string, filter: CreditClassStudentFilter): Promise<PaginatedResult<CreditClassStudent>> {
+  async listStudents(
+    sectionId: string,
+    filter: CreditClassStudentFilter,
+  ): Promise<PaginatedResult<CreditClassStudent>> {
     const params = new URLSearchParams();
-    if (filter.search) params.set('search', filter.search);
-    params.set('page', String(filter.page ?? 1));
-    params.set('page_size', String(filter.perPage ?? 10));
+    if (filter.search) params.set("search", filter.search);
+    params.set("page", String(filter.page ?? 1));
+    params.set("page_size", String(filter.perPage ?? 10));
 
-    const res = await fetch(`${API_URL}/${sectionId}/students?${params.toString()}`, {
-      headers: getAuthHeaders(),
-    });
+    const res = await fetch(
+      `${API_URL}/${sectionId}/students?${params.toString()}`,
+      {
+        headers: getAuthHeaders(),
+      },
+    );
     const payload = await parseListEnvelope<CourseSectionStudentResponse>(res);
 
     return {
@@ -366,10 +402,13 @@ export const creditClassApi: ICreditClassService = {
     };
   },
 
-  async addStudent(sectionId: string, studentId: string): Promise<CreditClassStudent> {
+  async addStudent(
+    sectionId: string,
+    studentId: string,
+  ): Promise<CreditClassStudent> {
     const res = await fetch(`${API_URL}/${sectionId}/students`, {
-      method: 'POST',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      method: "POST",
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ student_id: Number(studentId) }),
     });
     const payload = await parseEnvelope<CourseSectionStudentResponse>(res);
@@ -378,7 +417,7 @@ export const creditClassApi: ICreditClassService = {
 
   async removeStudent(sectionId: string, studentId: string): Promise<void> {
     const res = await fetch(`${API_URL}/${sectionId}/students/${studentId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: getAuthHeaders(),
     });
     await parseEnvelope<void>(res);
@@ -401,20 +440,21 @@ export const creditClassApi: ICreditClassService = {
     const current = list.find((item) => item.id === sessionId);
 
     const res = await fetch(`${API_URL}/${sectionId}/sessions/${sessionId}`, {
-      method: 'PATCH',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      method: "PATCH",
+      headers: getAuthHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         status: toSessionStatusCode(dto.status),
         note: dto.note ?? null,
       }),
     });
-    const payload = await parseEnvelope<CourseSectionSessionUpdateResponse>(res);
+    const payload =
+      await parseEnvelope<CourseSectionSessionUpdateResponse>(res);
 
     if (!current) {
       return {
         id: String(payload.data.id),
         courseSectionId: String(sectionId),
-        sessionDate: '',
+        sessionDate: "",
         status: mapSessionStatus(payload.data.status),
         statusLabel: payload.data.status_label,
         note: payload.data.note ?? undefined,
@@ -424,12 +464,15 @@ export const creditClassApi: ICreditClassService = {
     return mapUpdatedSession(current, payload.data);
   },
 
-  async importStudentsFromExcel(sectionId: string, file: File): Promise<CreditClassStudentImportResult> {
+  async importStudentsFromExcel(
+    sectionId: string,
+    file: File,
+  ): Promise<CreditClassStudentImportResult> {
     const formData = new FormData();
-    formData.append('file', file, file.name);
+    formData.append("file", file, file.name);
 
     const res = await fetch(`${API_URL}/${sectionId}/students/import`, {
-      method: 'POST',
+      method: "POST",
       headers: getAuthHeaders(),
       body: formData,
     });
@@ -438,18 +481,29 @@ export const creditClassApi: ICreditClassService = {
   },
 
   async downloadStudentImportTemplate(sectionId: string): Promise<Blob> {
-    const res = await fetch(`${API_URL}/${sectionId}/students/import/template`, {
-      headers: getAuthHeaders(),
-    });
+    const res = await fetch(
+      `${API_URL}/${sectionId}/students/import/template`,
+      {
+        headers: getAuthHeaders(),
+      },
+    );
 
     if (res.status === 401) {
       forceLogout();
-      throw new ApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 401);
+      throw new ApiError(
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+        401,
+      );
     }
 
     if (!res.ok) {
-      const payload = (await res.json().catch(() => ({}))) as { message?: string };
-      throw new ApiError(payload.message || 'Tải file mẫu thất bại', res.status);
+      const payload = (await res.json().catch(() => ({}))) as {
+        message?: string;
+      };
+      throw new ApiError(
+        payload.message || "Tải file mẫu thất bại",
+        res.status,
+      );
     }
 
     return await res.blob();
