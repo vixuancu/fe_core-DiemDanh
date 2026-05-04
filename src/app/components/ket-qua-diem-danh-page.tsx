@@ -564,7 +564,7 @@ export function KetQuaDiemDanhPage() {
                               onClick={() => handleCellClick(sv.student_id, record.class_session_id)}
                               title={isEditing ? 'Click để sửa' : (record.note || undefined)}
                             >
-                              {activeStatus ? (
+                              {activeStatus !== null && activeStatus !== undefined ? (
                                 <span className={`text-sm font-medium ${statusColorMap[activeStatus]}`}>{statusCodeMap[activeStatus]}</span>
                               ) : (
                                 <span className="text-muted-foreground">-</span>
