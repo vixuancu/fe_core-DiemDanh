@@ -60,6 +60,7 @@ export interface LopTinChiBuoiHoc {
 export interface UpdateLopTinChiBuoiHocDto {
   status: BuoiHocStatus;
   note?: string;
+  roomId?: string;
 }
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
