@@ -1,14 +1,27 @@
-import { useQuery } from '@tanstack/react-query';
-import { reportService } from '../services';
-import type { ReportFilter } from '../types';
+import { useQuery } from "@tanstack/react-query";
+import { reportService } from "../services";
+import type { ReportFilter } from "../types";
 
 export const reportKeys = {
-  all: ['reports'] as const,
-  stats: (filter: ReportFilter) => [...reportKeys.all, 'stats', filter] as const,
-  weeklyTrend: (filter: ReportFilter) => [...reportKeys.all, 'weeklyTrend', filter] as const,
-  classSummary: (filter: ReportFilter) => [...reportKeys.all, 'classSummary', filter] as const,
-  details: (filter: ReportFilter) => [...reportKeys.all, 'details', filter] as const,
+  all: ["reports"] as const,
+  overview: () => [...reportKeys.all, "overview"] as const,
+  stats: (filter: ReportFilter) =>
+    [...reportKeys.all, "stats", filter] as const,
+  weeklyTrend: (filter: ReportFilter) =>
+    [...reportKeys.all, "weeklyTrend", filter] as const,
+  classSummary: (filter: ReportFilter) =>
+    [...reportKeys.all, "classSummary", filter] as const,
+  details: (filter: ReportFilter) =>
+    [...reportKeys.all, "details", filter] as const,
 };
+
+export function useReportOverview(enabled = true) {
+  return useQuery({
+    queryKey: reportKeys.overview(),
+    queryFn: () => reportService.getOverview(),
+    enabled,
+  });
+}
 
 export function useReportStats(filter: ReportFilter, enabled = true) {
   return useQuery({

@@ -1,10 +1,23 @@
-import type { PaginatedResult } from '@/shared/types';
+import type { PaginatedResult } from "@/shared/types";
 
 export interface ReportStatsResponse {
   total_records: number;
   co_mat: number;
   tre: number;
   vang: number;
+}
+
+export interface ReportOverviewResponse {
+  student_total: number;
+  lecturer_total: number;
+  course_section_total: number;
+  camera_total: number;
+  camera_online: number;
+  room_total: number;
+  attendance_total: number;
+  attendance_present: number;
+  attendance_late: number;
+  attendance_absent: number;
 }
 
 export interface WeeklyTrendItem {
