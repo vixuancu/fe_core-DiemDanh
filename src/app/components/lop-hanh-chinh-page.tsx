@@ -221,20 +221,6 @@ export function LopHanhChinhPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-[#009dd9]">{stats?.total ?? total}</p>
-          <p className="text-xs text-muted-foreground mt-1">Tổng lớp hành chính</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-[#0a9a3e]">{stats?.active ?? 0}</p>
-          <p className="text-xs text-muted-foreground mt-1">Hoạt động</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-border text-center">
-          <p className="text-2xl text-[#ff0000]">{stats?.locked ?? 0}</p>
-          <p className="text-xs text-muted-foreground mt-1">Đã khóa</p>
-        </div>
-      </div>
 
       <div className="bg-white rounded-xl border border-border overflow-hidden">
         <div className="p-4 border-b border-border flex items-center gap-3 flex-wrap">
