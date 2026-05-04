@@ -1,5 +1,3 @@
-import type { PaginatedResult } from '@/shared/types';
-
 // ─── Domain model ─────────────────────────────────────────────────────────────
 
 export interface LopTinChi {
@@ -20,7 +18,7 @@ export interface LopTinChi {
   endTime?: string;
   siSo: number;
   schedules?: LopTinChiSchedule[];
-//   hocKy: string;
+  //   hocKy: string;
 }
 
 export interface LopTinChiSchedule {
@@ -39,7 +37,12 @@ export interface LopTinChiSchedule {
   displayText?: string;
 }
 
-export type BuoiHocStatus = 'da_xong' | 'nghi' | 'bu';
+export type BuoiHocStatus =
+  | "chua_bat_dau"
+  | "chua_xong"
+  | "da_xong"
+  | "nghi"
+  | "bu";
 
 export interface LopTinChiBuoiHoc {
   id: string;

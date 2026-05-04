@@ -9,6 +9,7 @@ import {
     CameraOff
 } from 'lucide-react';
 import { useClassrooms, useCreateClassroom, useUpdateClassroom, useDeleteClassroom } from '@/features/classrooms/hooks/useClassrooms';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { DataTablePagination } from './ui/data-table-pagination';
 import { ClassroomCreateRequest } from '@/features/classrooms/types';
 
@@ -252,6 +253,8 @@ function DeleteConfirmationModal({
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
 export function PhongHocPage() {
+    const { user } = useAuth();
+    const isGiaoVu = user?.role === 'giao_vu';
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; data?: any }>({
@@ -323,12 +326,14 @@ export function PhongHocPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
                 <h2 className="text-xl font-bold text-gray-800">Quản lý phòng học</h2>
-                <button
-                    onClick={handleAddNew}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer shadow-sm font-medium"
-                >
-                    <Plus className="w-4 h-4" /> Thêm phòng học
-                </button>
+                {!isGiaoVu && (
+                  <button
+                      onClick={handleAddNew}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#009dd9] text-white hover:bg-[#0088be] transition text-sm cursor-pointer shadow-sm font-medium"
+                  >
+                      <Plus className="w-4 h-4" /> Thêm phòng học
+                  </button>
+                )}
             </div>
 
             {/* Filters */}
@@ -392,11 +397,13 @@ export function PhongHocPage() {
                                             {room.createdAt}
                                         </td>
                                         <td className="py-3.5 px-4 text-center font-normal">
-                                            <ActionDropdown
-                                                room={room}
-                                                onEditClick={handleEdit}
-                                                onDeleteClick={handleDelete}
-                                            />
+                                            {!isGiaoVu && (
+                                              <ActionDropdown
+                                                  room={room}
+                                                  onEditClick={handleEdit}
+                                                  onDeleteClick={handleDelete}
+                                              />
+                                            )}
                                         </td>
                                     </tr>
                                 ))
@@ -421,14 +428,14 @@ export function PhongHocPage() {
                 </div>
             )}
 
-            {modalConfig.isOpen && (
+            {!isGiaoVu && modalConfig.isOpen && (
                 <ClassroomModal
                     initialData={modalConfig.data}
                     onClose={() => setModalConfig({ isOpen: false })}
                 />
             )}
 
-            {deleteConfig.isOpen && (
+            {!isGiaoVu && deleteConfig.isOpen && (
                 <DeleteConfirmationModal
                     classroom={deleteConfig.data}
                     onClose={() => setDeleteConfig({ isOpen: false, data: undefined })}
