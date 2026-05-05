@@ -3,7 +3,6 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { useCreditClasses } from '@/features/credit-classes/hooks/useCreditClasses';
 import { useAttendanceMatrix, useUpdateAttendanceCell } from '@/features/attendances/hooks/useAttendances';
 import { Download, FileText, ChevronLeft, ChevronRight, X, Pencil, Save, Ban, Loader2, Search } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { PortableDateInput } from './ui/portable-form-controls';
 import type { AttendanceRecordResponse } from '@/features/attendances/types';
 import { formatDateVi, parseDateStringToLocalDate } from '@/shared/lib/date-time';
@@ -207,6 +206,73 @@ export function KetQuaDiemDanhPage() {
     setEditingCellInfo({ studentId, sessionId });
   }, [isEditing]);
 
+  const handleExportExcel = useCallback(async () => {
+    if (!selectedLop || students.length === 0) return;
+
+    const XLSX = await import('xlsx');
+
+    // Header row
+    const headers = [
+      'STT',
+      'Mã SV',
+      'Họ và tên',
+      ...dates.map(d => (d.includes('-') ? formatDateVi(d) : d)),
+      'Thống kê',
+      'Ghi chú'
+    ];
+
+    // Data rows
+    const rows = students.map((sv, index) => {
+      const summary = getSummary(sv);
+      const note = getCombinedNote(sv);
+      
+      const rowData: (string | number)[] = [
+        index + 1,
+        sv.student_code,
+        sv.full_name,
+      ];
+
+      // Add status for each date
+      sv.records.forEach(record => {
+        const activeStatus = isEditing && editData[sv.student_id]?.[record.class_session_id] !== undefined
+          ? editData[sv.student_id][record.class_session_id].status
+          : record.status;
+        const statusStr = (activeStatus !== null && activeStatus !== undefined) ? statusCodeMap[activeStatus] : '-';
+        rowData.push(statusStr);
+      });
+
+      // Add stats and note
+      rowData.push(`C:${summary.coMat} | M:${summary.tre} | V:${summary.vang}`);
+      rowData.push(note || '');
+
+      return rowData;
+    });
+
+    const excelData = [headers, ...rows];
+
+    // Create workbook and worksheet
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+    
+    // Set column widths
+    const colWidths = [
+      { wch: 5 },  // STT
+      { wch: 15 }, // Mã SV
+      { wch: 25 }, // Họ và tên
+      ...dates.map(() => ({ wch: 12 })), // Dates
+      { wch: 15 }, // Thống kê
+      { wch: 40 }  // Ghi chú
+    ];
+    ws['!cols'] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "DiemDanh");
+
+    const safeClassName = selectedLop.maLop.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const fileName = `Ket_qua_diem_danh_${safeClassName}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+  }, [students, dates, selectedLop, isEditing, editData]);
+
 
   return (
     <div>
@@ -214,13 +280,22 @@ export function KetQuaDiemDanhPage() {
         <h2>Kết quả điểm danh</h2>
         <div className="flex items-center gap-2">
           {!isEditing ? (
-            <button
-              onClick={startEditing}
-              disabled={!selectedLop || students.length === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Pencil className="w-4 h-4" /> Chỉnh sửa
-            </button>
+            <>
+              <button
+                onClick={handleExportExcel}
+                disabled={!selectedLop || students.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" /> Xuất Excel
+              </button>
+              <button
+                onClick={startEditing}
+                disabled={!selectedLop || students.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Pencil className="w-4 h-4" /> Chỉnh sửa
+              </button>
+            </>
           ) : (
             <>
               <button
