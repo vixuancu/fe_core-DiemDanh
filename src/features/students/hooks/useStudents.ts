@@ -21,12 +21,36 @@ export function useUploadStudentFaces() {
     },
   });
 }
+
+export function useUploadStudentFaceVideo() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, video }: { studentId: string; video: File }) =>
+      studentService.uploadFaceVideo(studentId, video),
+    onSuccess: (_data, { studentId }) => {
+      queryClient.invalidateQueries({ queryKey: studentKeys.faces(studentId) });
+      queryClient.invalidateQueries({ queryKey: studentKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: [...studentKeys.all, "stats"],
+      });
+      notify.success("Đã upload video và trích embedding thành công");
+    },
+    onError: (error) => {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Upload video khuôn mặt thất bại";
+      notify.error(message);
+    },
+  });
+}
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { studentService } from "../services";
 import type {
   StudentFilter,
   CreateSinhVienDto,
   StudentImportResult,
+  StudentFaceUploadResult,
   StudentStats,
   UpdateSinhVienDto,
 } from "../types";
