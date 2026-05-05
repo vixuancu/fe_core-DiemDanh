@@ -1,4 +1,4 @@
-import type { PaginatedResult } from '@/shared/types';
+import type { PaginatedResult } from "@/shared/types";
 
 // ─── Domain model ─────────────────────────────────────────────────────────────
 
@@ -10,7 +10,7 @@ export interface SinhVien {
   gioiTinh: boolean | null;
   lopHanhChinhId: string;
   lopHanhChinh: string;
-  trangThai: 'active' | 'locked';
+  trangThai: "active" | "locked";
   soAnhKhuonMat: number;
 }
 
@@ -25,7 +25,7 @@ export interface CreateSinhVienDto {
 }
 
 export interface UpdateSinhVienDto extends Partial<CreateSinhVienDto> {
-  trangThai?: 'active' | 'locked';
+  trangThai?: "active" | "locked";
 }
 
 export interface LopHanhChinhOption {
@@ -53,6 +53,13 @@ export interface StudentImportResult {
   errors: StudentImportErrorItem[];
 }
 
+export interface StudentFaceUploadResult {
+  uploaded: number;
+  failed: number;
+  faces: StudentFaceItem[];
+  errors: string[];
+}
+
 export interface StudentStats {
   total: number;
   active: number;
@@ -64,7 +71,7 @@ export interface StudentStats {
 export interface StudentFilter {
   search?: string;
   lopHanhChinhId?: string;
-  trangThai?: 'active' | 'locked' | '';
+  trangThai?: "active" | "locked" | "";
   page?: number;
   perPage?: number;
 }

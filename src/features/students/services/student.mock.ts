@@ -1,4 +1,4 @@
-import type { IStudentService } from './student.service';
+import type { IStudentService } from "./student.service";
 import type {
   CreateSinhVienDto,
   LopHanhChinhOption,
@@ -7,70 +7,71 @@ import type {
   StudentFaceItem,
   StudentFilter,
   StudentImportResult,
+  StudentFaceUploadResult,
   StudentStats,
   UpdateSinhVienDto,
-} from '../types';
+} from "../types";
 
 const CLASS_OPTIONS: LopHanhChinhOption[] = [
-  { id: '1', name: 'K23-7E1062' },
-  { id: '2', name: 'K23-7E1061' },
-  { id: '3', name: 'K24-7E1011' },
+  { id: "1", name: "K23-7E1062" },
+  { id: "2", name: "K23-7E1061" },
+  { id: "3", name: "K24-7E1011" },
 ];
 
 let STORE: SinhVien[] = [
   {
-    id: '1',
-    maSV: '22A1001D0043',
-    hoTen: 'Vi Xuân Cử',
-    ngaySinh: '2004-01-12',
+    id: "1",
+    maSV: "22A1001D0043",
+    hoTen: "Vi Xuân Cử",
+    ngaySinh: "2004-01-12",
     gioiTinh: true,
-    lopHanhChinhId: '1',
-    lopHanhChinh: 'K23-7E1062',
-    trangThai: 'active',
+    lopHanhChinhId: "1",
+    lopHanhChinh: "K23-7E1062",
+    trangThai: "active",
     soAnhKhuonMat: 1,
   },
   {
-    id: '2',
-    maSV: '22A1001D0044',
-    hoTen: 'Nguyễn Văn An',
-    ngaySinh: '2004-03-05',
+    id: "2",
+    maSV: "22A1001D0044",
+    hoTen: "Nguyễn Văn An",
+    ngaySinh: "2004-03-05",
     gioiTinh: true,
-    lopHanhChinhId: '1',
-    lopHanhChinh: 'K23-7E1062',
-    trangThai: 'active',
+    lopHanhChinhId: "1",
+    lopHanhChinh: "K23-7E1062",
+    trangThai: "active",
     soAnhKhuonMat: 0,
   },
   {
-    id: '3',
-    maSV: '22A1001D0045',
-    hoTen: 'Trần Thị Bình',
-    ngaySinh: '2004-09-21',
+    id: "3",
+    maSV: "22A1001D0045",
+    hoTen: "Trần Thị Bình",
+    ngaySinh: "2004-09-21",
     gioiTinh: false,
-    lopHanhChinhId: '2',
-    lopHanhChinh: 'K23-7E1061',
-    trangThai: 'locked',
+    lopHanhChinhId: "2",
+    lopHanhChinh: "K23-7E1061",
+    trangThai: "locked",
     soAnhKhuonMat: 2,
   },
 ];
 
 const FACE_STORE: Record<string, StudentFaceItem[]> = {
-  '1': [
+  "1": [
     {
-      id: '1',
-      imageUrl: 'https://example.com/faces/1-1.jpg',
+      id: "1",
+      imageUrl: "https://example.com/faces/1-1.jpg",
       createdAt: new Date().toISOString(),
     },
   ],
-  '2': [],
-  '3': [
+  "2": [],
+  "3": [
     {
-      id: '2',
-      imageUrl: 'https://example.com/faces/3-1.jpg',
+      id: "2",
+      imageUrl: "https://example.com/faces/3-1.jpg",
       createdAt: new Date().toISOString(),
     },
     {
-      id: '3',
-      imageUrl: 'https://example.com/faces/3-2.jpg',
+      id: "3",
+      imageUrl: "https://example.com/faces/3-2.jpg",
       createdAt: new Date().toISOString(),
     },
   ],
@@ -78,7 +79,8 @@ const FACE_STORE: Record<string, StudentFaceItem[]> = {
 
 let nextId = 4;
 let nextFaceId = 4;
-const delay = (ms = 300) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const delay = (ms = 300) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 function toViewModel(item: SinhVien): SinhVien {
   return {
@@ -98,15 +100,23 @@ function resolveClass(id: string): LopHanhChinhOption | undefined {
 }
 
 export const studentMock: IStudentService = {
-  async list({ search = '', lopHanhChinhId = '', trangThai = '', page = 1, perPage = 10 }: StudentFilter): Promise<PaginatedResult<SinhVien>> {
+  async list({
+    search = "",
+    lopHanhChinhId = "",
+    trangThai = "",
+    page = 1,
+    perPage = 10,
+  }: StudentFilter): Promise<PaginatedResult<SinhVien>> {
     await delay();
     const keyword = search.trim().toLowerCase();
 
     const filtered = STORE.filter((item) => {
-      const matchSearch = !keyword
-        || item.hoTen.toLowerCase().includes(keyword)
-        || item.maSV.toLowerCase().includes(keyword);
-      const matchClass = !lopHanhChinhId || item.lopHanhChinhId === lopHanhChinhId;
+      const matchSearch =
+        !keyword ||
+        item.hoTen.toLowerCase().includes(keyword) ||
+        item.maSV.toLowerCase().includes(keyword);
+      const matchClass =
+        !lopHanhChinhId || item.lopHanhChinhId === lopHanhChinhId;
       const matchStatus = !trangThai || item.trangThai === trangThai;
       return matchSearch && matchClass && matchStatus;
     });
@@ -114,7 +124,9 @@ export const studentMock: IStudentService = {
     const total = filtered.length;
     const totalPages = Math.max(1, Math.ceil(total / perPage));
     const safePage = Math.min(Math.max(1, page), totalPages);
-    const data = filtered.slice((safePage - 1) * perPage, safePage * perPage).map(toViewModel);
+    const data = filtered
+      .slice((safePage - 1) * perPage, safePage * perPage)
+      .map(toViewModel);
 
     return { data, total, page: safePage, perPage, totalPages };
   },
@@ -134,18 +146,18 @@ export const studentMock: IStudentService = {
 
     const classInfo = resolveClass(dto.lopHanhChinhId);
     if (!classInfo) {
-      throw new Error('Lớp hành chính không hợp lệ');
+      throw new Error("Lớp hành chính không hợp lệ");
     }
 
     const created: SinhVien = {
       id: String(nextId++),
       maSV,
       hoTen: dto.hoTen,
-      ngaySinh: dto.ngaySinh || '',
+      ngaySinh: dto.ngaySinh || "",
       gioiTinh: dto.gioiTinh ?? null,
       lopHanhChinhId: dto.lopHanhChinhId,
       lopHanhChinh: classInfo.name,
-      trangThai: 'active',
+      trangThai: "active",
       soAnhKhuonMat: 0,
     };
 
@@ -159,7 +171,10 @@ export const studentMock: IStudentService = {
     const index = STORE.findIndex((item) => item.id === id);
     if (index === -1) throw new Error(`Sinh viên id=${id} không tồn tại`);
 
-    if (dto.maSV && STORE.some((item, i) => i !== index && item.maSV === dto.maSV)) {
+    if (
+      dto.maSV &&
+      STORE.some((item, i) => i !== index && item.maSV === dto.maSV)
+    ) {
       throw new Error(`Mã sinh viên '${dto.maSV}' đã tồn tại`);
     }
 
@@ -167,7 +182,7 @@ export const studentMock: IStudentService = {
     if (dto.lopHanhChinhId) {
       const classInfo = resolveClass(dto.lopHanhChinhId);
       if (!classInfo) {
-        throw new Error('Lớp hành chính không hợp lệ');
+        throw new Error("Lớp hành chính không hợp lệ");
       }
       lopHanhChinh = classInfo.name;
     }
@@ -201,21 +216,25 @@ export const studentMock: IStudentService = {
     return [...CLASS_OPTIONS];
   },
 
-  async getStats(filter: Pick<StudentFilter, 'search' | 'lopHanhChinhId'>): Promise<StudentStats> {
+  async getStats(
+    filter: Pick<StudentFilter, "search" | "lopHanhChinhId">,
+  ): Promise<StudentStats> {
     await delay(120);
-    const keyword = (filter.search || '').trim().toLowerCase();
+    const keyword = (filter.search || "").trim().toLowerCase();
     const filtered = STORE.filter((item) => {
-      const matchSearch = !keyword
-        || item.hoTen.toLowerCase().includes(keyword)
-        || item.maSV.toLowerCase().includes(keyword);
-      const matchClass = !filter.lopHanhChinhId || item.lopHanhChinhId === filter.lopHanhChinhId;
+      const matchSearch =
+        !keyword ||
+        item.hoTen.toLowerCase().includes(keyword) ||
+        item.maSV.toLowerCase().includes(keyword);
+      const matchClass =
+        !filter.lopHanhChinhId || item.lopHanhChinhId === filter.lopHanhChinhId;
       return matchSearch && matchClass;
     });
 
     return {
       total: filtered.length,
-      active: filtered.filter((item) => item.trangThai === 'active').length,
-      locked: filtered.filter((item) => item.trangThai === 'locked').length,
+      active: filtered.filter((item) => item.trangThai === "active").length,
+      locked: filtered.filter((item) => item.trangThai === "locked").length,
     };
   },
 
@@ -223,8 +242,8 @@ export const studentMock: IStudentService = {
     await delay(400);
 
     const name = file.name.toLowerCase();
-    if (!name.endsWith('.xlsx')) {
-      throw new Error('Mock chỉ hỗ trợ file .xlsx');
+    if (!name.endsWith(".xlsx")) {
+      throw new Error("Mock chỉ hỗ trợ file .xlsx");
     }
 
     return {
@@ -237,8 +256,9 @@ export const studentMock: IStudentService = {
 
   async downloadImportTemplate(): Promise<Blob> {
     await delay(100);
-    const content = 'Mã sinh viên,Họ và tên,Ngày sinh,Giới tính,Lớp hành chính\n';
-    return new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const content =
+      "Mã sinh viên,Họ và tên,Ngày sinh,Giới tính,Lớp hành chính\n";
+    return new Blob([content], { type: "text/csv;charset=utf-8;" });
   },
 
   async listFaces(studentId: string): Promise<StudentFaceItem[]> {
@@ -251,15 +271,17 @@ export const studentMock: IStudentService = {
     await delay(250);
     ensureStudent(studentId);
     const normalizedUrl = imageUrl.trim();
-    const isHttpUrl = normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://');
-    const isImageDataUrl = normalizedUrl.startsWith('data:image/');
+    const isHttpUrl =
+      normalizedUrl.startsWith("http://") ||
+      normalizedUrl.startsWith("https://");
+    const isImageDataUrl = normalizedUrl.startsWith("data:image/");
     if (!isHttpUrl && !isImageDataUrl) {
-      throw new Error('Dữ liệu ảnh không hợp lệ');
+      throw new Error("Dữ liệu ảnh không hợp lệ");
     }
 
     const faces = FACE_STORE[studentId] ?? [];
     if (faces.some((item) => item.imageUrl === normalizedUrl)) {
-      throw new Error('URL ảnh khuôn mặt đã tồn tại');
+      throw new Error("URL ảnh khuôn mặt đã tồn tại");
     }
 
     const created: StudentFaceItem = {
@@ -276,8 +298,57 @@ export const studentMock: IStudentService = {
     ensureStudent(studentId);
     const faces = FACE_STORE[studentId] ?? [];
     const index = faces.findIndex((item) => item.id === faceId);
-    if (index === -1) throw new Error(`Ảnh khuôn mặt id=${faceId} không tồn tại`);
+    if (index === -1)
+      throw new Error(`Ảnh khuôn mặt id=${faceId} không tồn tại`);
     faces.splice(index, 1);
     FACE_STORE[studentId] = faces;
+  },
+
+  async uploadFaceFiles(
+    studentId: string,
+    files: File[],
+  ): Promise<StudentFaceUploadResult> {
+    await delay(250);
+    ensureStudent(studentId);
+    const faces = FACE_STORE[studentId] ?? [];
+    const created: StudentFaceItem = {
+      id: String(nextFaceId++),
+      imageUrl:
+        files[0] && typeof URL !== "undefined" && "createObjectURL" in URL
+          ? URL.createObjectURL(files[0])
+          : "data:image/png;base64,mock",
+      createdAt: new Date().toISOString(),
+    };
+    FACE_STORE[studentId] = [created, ...faces];
+    return {
+      uploaded: Math.max(1, files.length),
+      failed: 0,
+      faces: [created],
+      errors: [],
+    };
+  },
+
+  async uploadFaceVideo(
+    studentId: string,
+    video: File,
+  ): Promise<StudentFaceUploadResult> {
+    await delay(350);
+    ensureStudent(studentId);
+    const faces = FACE_STORE[studentId] ?? [];
+    const created: StudentFaceItem = {
+      id: String(nextFaceId++),
+      imageUrl:
+        typeof URL !== "undefined" && "createObjectURL" in URL
+          ? URL.createObjectURL(video)
+          : "data:video/webm;base64,mock",
+      createdAt: new Date().toISOString(),
+    };
+    FACE_STORE[studentId] = [created, ...faces];
+    return {
+      uploaded: 1,
+      failed: 0,
+      faces: [created],
+      errors: [],
+    };
   },
 };
