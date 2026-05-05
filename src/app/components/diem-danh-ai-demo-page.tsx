@@ -26,7 +26,7 @@ interface DrawFaceBox {
   width: number;
   height: number;
   label: string;
-  state: 'recognized' | 'already' | 'focusing' | 'confirming' | 'unknown';
+  state: 'recognized' | 'already' | 'focusing' | 'confirming' | 'unknown' | 'spoof';
 }
 
 interface AttendedRow {
@@ -321,12 +321,17 @@ export function DiemDanhAiDemoPage() {
         return;
       }
 
-      const state: DrawFaceBox['state'] = face.recognized
-        ? (face.already_marked ? 'already' : 'recognized')
-        : (face.status === 'confirming' ? 'confirming' : (face.status === 'focusing' ? 'focusing' : 'unknown'));
+      // Thêm hiển thị "spoof" khi phát hiện giả mạo
+      const state: DrawFaceBox['state'] = face.is_spoof
+        ? 'spoof'
+        : face.recognized
+          ? (face.already_marked ? 'already' : 'recognized')
+          : (face.status === 'confirming' ? 'confirming' : (face.status === 'focusing' ? 'focusing' : 'unknown'));
 
       let label = 'Unknown';
-      if (face.recognized) {
+      if (face.is_spoof) {
+        label = `Giả mạo! Score: ${face.liveness_score?.toFixed(2) || 0}`;
+      } else if (face.recognized) {
         label = `${face.full_name ?? 'Unknown'}`;
       } else if (state === 'confirming') {
         label = `Dang xac nhan (${face.confirm_hits ?? 1}/${face.confirm_required ?? 2})`;
@@ -471,7 +476,10 @@ export function DiemDanhAiDemoPage() {
       const bb = detections[i]?.boundingBox;
       if (!bb) continue;
 
-      const pad = 0.6;
+      // Mở rộng padding để lấy bối cảnh phục vụ cho việc chống giả mạo Liveness (Anti-Spoofing)
+      // Mô hình MiniFASNet cần nhìn thấy viền điện thoại / background để tỷ lệ chính xác cao nhất
+      // Scale padding = 1.2 (cân bằng để InsightFace vẫn nhận ra sinh viên)
+      const pad = 1.2;
       const cx = bb.xCenter * vw;
       const cy = bb.yCenter * vh;
       const fw = bb.width * vw * (1 + pad);
@@ -816,7 +824,9 @@ export function DiemDanhAiDemoPage() {
                           ? 'border-orange-400 bg-orange-400/15'
                           : box.state === 'focusing'
                             ? 'border-yellow-400 bg-yellow-400/15'
-                            : 'border-red-500 bg-red-500/15'
+                            : box.state === 'spoof'
+                              ? 'border-fuchsia-600 bg-fuchsia-600/20 shadow-[0_0_15px_rgba(192,38,211,0.5)]'
+                              : 'border-red-500 bg-red-500/15'
                   }`}
                   style={{
                     left: `${box.left}px`,
