@@ -205,9 +205,21 @@ function mapSessionStatus(value: number): LopTinChiBuoiHoc["status"] {
   return "chua_xong";
 }
 
+function mapSessionStatusLabel(value: number, fallback?: string): string {
+  if (fallback) return fallback;
+  if (value === 0) return "Chưa bắt đầu";
+  if (value === 1) return "Chưa xong";
+  if (value === 2) return "Đã xong";
+  if (value === 3) return "Nghỉ";
+  if (value === 4) return "Bù";
+  return "Chưa bắt đầu";
+}
+
 function toSessionStatusCode(
   value: UpdateLopTinChiBuoiHocDto["status"],
 ): number {
+  if (value === "chua_bat_dau") return 0;
+  if (value === "chua_xong") return 1;
   if (value === "da_xong") return 2;
   if (value === "nghi") return 3;
   return 4;
@@ -225,7 +237,7 @@ function mapCourseSectionSession(
     roomId: item.room_id != null ? String(item.room_id) : undefined,
     roomName: item.room_name ?? undefined,
     status: mapSessionStatus(item.status),
-    statusLabel: item.status_label,
+    statusLabel: mapSessionStatusLabel(item.status, item.status_label),
     note: item.note ?? undefined,
   };
 }
@@ -238,7 +250,7 @@ function mapUpdatedSession(
     ...base,
     id: String(item.id),
     status: mapSessionStatus(item.status),
-    statusLabel: item.status_label,
+    statusLabel: mapSessionStatusLabel(item.status, item.status_label),
     note: item.note ?? undefined,
     roomId: item.room_id != null ? String(item.room_id) : base.roomId,
     roomName: item.room_name ?? base.roomName,
@@ -463,7 +475,10 @@ export const creditClassApi: ICreditClassService = {
         courseSectionId: String(sectionId),
         sessionDate: "",
         status: mapSessionStatus(payload.data.status),
-        statusLabel: payload.data.status_label,
+        statusLabel: mapSessionStatusLabel(
+          payload.data.status,
+          payload.data.status_label,
+        ),
         note: payload.data.note ?? undefined,
       };
     }

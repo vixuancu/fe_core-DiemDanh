@@ -136,6 +136,12 @@ const NAV_GROUPS: NavGroup[] = [
         icon: <History className="w-4 h-4" />,
         roles: ["admin", "giao_vu", "giang_vien"],
       },
+      {
+        label: "Kết quả điểm danh",
+        path: "/ket-qua-diem-danh",
+        icon: <ClipboardCheck className="w-4 h-4" />,
+        roles: ["admin", "giao_vu", "giang_vien"],
+      },
     ],
   },
   {
@@ -165,12 +171,6 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Báo cáo thống kê",
         path: "/bao-cao",
         icon: <BarChart3 className="w-4 h-4" />,
-        roles: ["admin", "giao_vu"],
-      },
-      {
-        label: "Kết quả điểm danh",
-        path: "/ket-qua-diem-danh",
-        icon: <ClipboardCheck className="w-4 h-4" />,
         roles: ["admin", "giao_vu", "giang_vien"],
       },
     ],

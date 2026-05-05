@@ -34,9 +34,9 @@ interface TimetableLesson {
 const daysOfWeek = [2, 3, 4, 5, 6, 7, 8];
 const caHocs: CaHoc[] = ["Sáng", "Chiều", "Tối"];
 const caHocTiet: Record<CaHoc, string> = {
-  Sáng: "Tiết 1-5",
-  Chiều: "Tiết 6-10",
-  Tối: "Tiết 11-15",
+  Sáng: "Tiết 1-4",
+  Chiều: "Tiết 5-8",
+  Tối: "Tiết 9-13",
 };
 
 const thuLabels: Record<number, string> = {
@@ -76,8 +76,8 @@ function dateToYmd(d: Date): string {
 }
 
 function resolveCaHoc(startPeriod: number): CaHoc {
-  if (startPeriod <= 5) return "Sáng";
-  if (startPeriod <= 10) return "Chiều";
+  if (startPeriod <= 4) return "Sáng";
+  if (startPeriod <= 8) return "Chiều";
   return "Tối";
 }
 

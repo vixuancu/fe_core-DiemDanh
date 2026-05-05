@@ -50,6 +50,15 @@ const ENROLLMENTS: Record<string, string[]> = {
 
 const SESSIONS_STORE: Record<string, LopTinChiBuoiHoc[]> = {};
 
+function resolveSessionStatusLabel(status: LopTinChiBuoiHoc["status"]): string {
+  if (status === "chua_bat_dau") return "Chưa bắt đầu";
+  if (status === "chua_xong") return "Chưa xong";
+  if (status === "da_xong") return "Đã xong";
+  if (status === "nghi") return "Nghỉ";
+  if (status === "bu") return "Bù";
+  return "Chưa bắt đầu";
+}
+
 function ensureSessionStore(sectionId: string): LopTinChiBuoiHoc[] {
   if (SESSIONS_STORE[sectionId]) return SESSIONS_STORE[sectionId];
 
@@ -260,8 +269,7 @@ export const creditClassMock: ICreditClassService = {
     const idx = sessions.findIndex((item) => item.id === sessionId);
     if (idx < 0) throw new Error("Không tìm thấy buổi học");
 
-    const statusLabel =
-      dto.status === "nghi" ? "Nghỉ" : dto.status === "bu" ? "Bù" : "Đã xong";
+    const statusLabel = resolveSessionStatusLabel(dto.status);
     sessions[idx] = {
       ...sessions[idx],
       status: dto.status,

@@ -67,6 +67,8 @@ function resolvePeriodText(
 }
 
 const buoiHocStatusOptions: Array<{ value: BuoiHocStatus; label: string }> = [
+  { value: "chua_bat_dau", label: "Chưa bắt đầu" },
+  { value: "chua_xong", label: "Chưa xong" },
   { value: "da_xong", label: "Đã xong" },
   { value: "nghi", label: "Nghỉ" },
   { value: "bu", label: "Bù" },
@@ -271,8 +273,9 @@ function ClassDetailModal({
                   >
                     <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                       <div className="text-sm font-semibold text-gray-800">
-                        Buổi {index + 1} -{" "}
-                        {formatDateTimeLabel(session.sessionDate)}
+                        Buổi {index + 1}
+                        {/* - {" "}
+                        {formatDateTimeLabel(session.sessionDate)} */}
                       </div>
                       <span className="text-xs rounded-full px-2 py-1 bg-slate-100 text-slate-700">
                         {session.statusLabel}
