@@ -196,7 +196,8 @@ function mapImportResult(
 }
 
 function mapSessionStatus(value: number): LopTinChiBuoiHoc["status"] {
-  if (value === 0) return "chua_xong";
+  if (value === 0) return "chua_bat_dau";
+  if (value === 1) return "chua_xong";
   if (value === 2) return "da_xong";
   if (value === 3) return "nghi";
   if (value === 4) return "bu";
@@ -255,6 +256,7 @@ function mapCreatePayload(dto: CreateLopTinChiDto) {
     end_date: dto.endDate,
     start_period: dto.startPeriod,
     number_of_periods: dto.numberOfPeriods,
+    status: 0,
     start_time: null,
     end_time: null,
     schedules: dto.schedules?.map((schedule) => ({

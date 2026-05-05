@@ -66,8 +66,8 @@ function ensureSessionStore(sectionId: string): LopTinChiBuoiHoc[] {
       sessionDate: section.startDate,
       roomId: schedule.roomId,
       roomName: schedule.roomName,
-      status: "da_xong",
-      statusLabel: "Đã xong",
+      status: "chua_bat_dau",
+      statusLabel: "Chưa bắt đầu",
       note: "",
     }),
   );
