@@ -2,7 +2,6 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import { roleLabels, type UserRole } from "@/shared/types";
 import {
   BarChart3,
-  Bell,
   BookCopy,
   Building2,
   CalendarClock,
@@ -267,9 +266,17 @@ export function AppShell() {
   if (!user) return null;
 
   const canViewOverview = NAV_OVERVIEW.roles.includes(user.role);
+  const isGiangVien = user.role === "giang_vien";
   const filteredGroups = NAV_GROUPS.map((group) => ({
     ...group,
-    children: group.children.filter((item) => item.roles.includes(user.role)),
+    children: group.children
+      .filter((item) => item.roles.includes(user.role))
+      .map((item) => {
+        if (item.path === "/lich-hoc" && isGiangVien) {
+          return { ...item, label: "Lịch dạy" };
+        }
+        return item;
+      }),
   })).filter((group) => group.children.length > 0);
   const flatNavItems = filteredGroups.flatMap((group) => group.children);
   const tabMeta = getTabMeta(location.pathname);
@@ -461,10 +468,10 @@ export function AppShell() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="relative p-2 rounded-lg hover:bg-muted transition cursor-pointer">
+            {/* <button className="relative p-2 rounded-lg hover:bg-muted transition cursor-pointer">
               <Bell className="w-5 h-5 text-muted-foreground" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
+            </button> */}
 
             <div className="relative">
               <button
