@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { creditClassService } from '../services';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { creditClassService } from "../services";
 import type {
   CreditClassStudentImportResult,
   CreditClassFilter,
@@ -7,17 +7,19 @@ import type {
   UpdateLopTinChiBuoiHocDto,
   CreateLopTinChiDto,
   UpdateLopTinChiDto,
-} from '../types';
-import { notify } from '@/shared/lib/notify';
+} from "../types";
+import { notify } from "@/shared/lib/notify";
 
 export const creditClassKeys = {
-  all: ['creditClasses'] as const,
-  lists: () => [...creditClassKeys.all, 'list'] as const,
-  list: (filter: CreditClassFilter) => [...creditClassKeys.lists(), filter] as const,
-  formOptions: () => [...creditClassKeys.all, 'formOptions'] as const,
+  all: ["creditClasses"] as const,
+  lists: () => [...creditClassKeys.all, "list"] as const,
+  list: (filter: CreditClassFilter) =>
+    [...creditClassKeys.lists(), filter] as const,
+  formOptions: () => [...creditClassKeys.all, "formOptions"] as const,
   students: (sectionId: string, filter: CreditClassStudentFilter) =>
-    [...creditClassKeys.all, 'students', sectionId, filter] as const,
-  sessions: (sectionId: string) => [...creditClassKeys.all, 'sessions', sectionId] as const,
+    [...creditClassKeys.all, "students", sectionId, filter] as const,
+  sessions: (sectionId: string) =>
+    [...creditClassKeys.all, "sessions", sectionId] as const,
 };
 
 export function useCreditClasses(filter: CreditClassFilter) {
@@ -34,7 +36,7 @@ export function useCreditClassFormOptions() {
     queryFn: () => creditClassService.getFormOptions(),
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
-    refetchOnMount: 'always',
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
 }
@@ -45,10 +47,11 @@ export function useCreateCreditClass() {
     mutationFn: (dto: CreateLopTinChiDto) => creditClassService.create(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
-      notify.success('Thêm lớp tín chỉ thành công');
+      notify.success("Thêm lớp tín chỉ thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Thêm lớp tín chỉ thất bại';
+      const message =
+        error instanceof Error ? error.message : "Thêm lớp tín chỉ thất bại";
       notify.error(message);
     },
   });
@@ -61,10 +64,13 @@ export function useUpdateCreditClass() {
       creditClassService.update(id, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
-      notify.success('Cập nhật lớp tín chỉ thành công');
+      notify.success("Cập nhật lớp tín chỉ thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Cập nhật lớp tín chỉ thất bại';
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Cập nhật lớp tín chỉ thất bại";
       notify.error(message);
     },
   });
@@ -76,16 +82,20 @@ export function useDeleteCreditClass() {
     mutationFn: (id: string) => creditClassService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
-      notify.success('Xóa lớp tín chỉ thành công');
+      notify.success("Xóa lớp tín chỉ thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Xóa lớp tín chỉ thất bại';
+      const message =
+        error instanceof Error ? error.message : "Xóa lớp tín chỉ thất bại";
       notify.error(message);
     },
   });
 }
 
-export function useCreditClassStudents(sectionId: string, filter: CreditClassStudentFilter) {
+export function useCreditClassStudents(
+  sectionId: string,
+  filter: CreditClassStudentFilter,
+) {
   return useQuery({
     queryKey: creditClassKeys.students(sectionId, filter),
     queryFn: () => creditClassService.listStudents(sectionId, filter),
@@ -115,11 +125,14 @@ export function useUpdateCreditClassSession() {
       dto: UpdateLopTinChiBuoiHocDto;
     }) => creditClassService.updateSession(sectionId, sessionId, dto),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: creditClassKeys.sessions(variables.sectionId) });
-      notify.success('Cập nhật buổi học thành công');
+      queryClient.invalidateQueries({
+        queryKey: creditClassKeys.sessions(variables.sectionId),
+      });
+      notify.success("Cập nhật buổi học thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Cập nhật buổi học thất bại';
+      const message =
+        error instanceof Error ? error.message : "Cập nhật buổi học thất bại";
       notify.error(message);
     },
   });
@@ -128,17 +141,23 @@ export function useUpdateCreditClassSession() {
 export function useAddStudentToCreditClass() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ sectionId, studentId }: { sectionId: string; studentId: string }) =>
-      creditClassService.addStudent(sectionId, studentId),
+    mutationFn: ({
+      sectionId,
+      studentId,
+    }: {
+      sectionId: string;
+      studentId: string;
+    }) => creditClassService.addStudent(sectionId, studentId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: [...creditClassKeys.all, 'students', variables.sectionId],
+        queryKey: [...creditClassKeys.all, "students", variables.sectionId],
       });
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
-      notify.success('Thêm sinh viên vào lớp tín chỉ thành công');
+      notify.success("Thêm sinh viên vào lớp tín chỉ thành công");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Thêm sinh viên thất bại';
+      const message =
+        error instanceof Error ? error.message : "Thêm sinh viên thất bại";
       notify.error(message);
     },
   });
@@ -147,17 +166,23 @@ export function useAddStudentToCreditClass() {
 export function useRemoveStudentFromCreditClass() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ sectionId, studentId }: { sectionId: string; studentId: string }) =>
-      creditClassService.removeStudent(sectionId, studentId),
+    mutationFn: ({
+      sectionId,
+      studentId,
+    }: {
+      sectionId: string;
+      studentId: string;
+    }) => creditClassService.removeStudent(sectionId, studentId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: [...creditClassKeys.all, 'students', variables.sectionId],
+        queryKey: [...creditClassKeys.all, "students", variables.sectionId],
       });
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
-      notify.success('Đã xóa sinh viên khỏi lớp tín chỉ');
+      notify.success("Đã xóa sinh viên khỏi lớp tín chỉ");
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Xóa sinh viên thất bại';
+      const message =
+        error instanceof Error ? error.message : "Xóa sinh viên thất bại";
       notify.error(message);
     },
   });
@@ -166,10 +191,11 @@ export function useRemoveStudentFromCreditClass() {
 export function useImportStudentsToCreditClass(sectionId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) => creditClassService.importStudentsFromExcel(sectionId, file),
+    mutationFn: (file: File) =>
+      creditClassService.importStudentsFromExcel(sectionId, file),
     onSuccess: (result: CreditClassStudentImportResult) => {
       queryClient.invalidateQueries({
-        queryKey: [...creditClassKeys.all, 'students', sectionId],
+        queryKey: [...creditClassKeys.all, "students", sectionId],
       });
       queryClient.invalidateQueries({ queryKey: creditClassKeys.lists() });
 
@@ -177,22 +203,26 @@ export function useImportStudentsToCreditClass(sectionId: string) {
         // notify.warning(`Đã import ${result.importedCount}/${result.totalRows} sinh viên`);
         notify.error(`Thêm sinh viên thất bại`);
       } else {
-        notify.success(`Import thành công ${result.importedCount} sinh viên`);
+        notify.success(`Thêm thành công ${result.importedCount} sinh viên`);
       }
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Import sinh viên thất bại';
+      const message =
+        error instanceof Error ? error.message : "Thêm sinh viên thất bại";
       notify.error(message);
     },
   });
 }
 
-export async function downloadCreditClassStudentImportTemplate(sectionId: string) {
-  const blob = await creditClassService.downloadStudentImportTemplate(sectionId);
+export async function downloadCreditClassStudentImportTemplate(
+  sectionId: string,
+) {
+  const blob =
+    await creditClassService.downloadStudentImportTemplate(sectionId);
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const link = document.createElement("a");
   link.href = url;
-  link.download = 'credit_class_student_import_template.xlsx';
+  link.download = "credit_class_student_import_template.xlsx";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

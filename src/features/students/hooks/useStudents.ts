@@ -252,15 +252,15 @@ export function useImportStudents() {
       queryClient.invalidateQueries({ queryKey: studentKeys.classOptions() });
       if (result.failedCount > 0) {
         notify.warning(
-          `Đã import ${result.importedCount}/${result.totalRows} dòng`,
+          `Đã thêm ${result.importedCount}/${result.totalRows} dòng`,
         );
       } else {
-        notify.success(`Import thành công ${result.importedCount} dòng`);
+        notify.success(`Thêm thành công ${result.importedCount} dòng`);
       }
     },
     onError: (error) => {
       const message =
-        error instanceof Error ? error.message : "Import sinh viên thất bại";
+        error instanceof Error ? error.message : "Thêm sinh viên thất bại";
       notify.error(message);
     },
   });
