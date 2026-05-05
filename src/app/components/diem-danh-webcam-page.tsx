@@ -106,9 +106,11 @@ function resolveBoxFrameClass(state: DrawFaceBox['state']): string {
   return 'border-red-500 bg-red-500/15';
 }
 
-function resolveRejectedText(debugReason?: string): string {
+function resolveRejectedText(debugReason?: string, face?: AttendanceWebcamFace): string {
   if (debugReason === 'spoof_detected') return 'Phát hiện giả mạo!';
-  if (debugReason === 'not_enrolled_in_session') return 'Không thuộc lớp này';
+  if (debugReason === 'not_enrolled_in_session') {
+    return face?.full_name ? `Không thuộc lớp này: ${face.full_name}` : 'Không thuộc lớp này';
+  }
   return 'Chưa nhận diện được';
 }
 
@@ -411,7 +413,7 @@ export function DiemDanhWebcamPage() {
       const shouldRejectNow = Boolean(debugReason && debugReason !== 'matched');
       if (shouldRejectNow) {
         labels.set(key, {
-          name: resolveRejectedText(debugReason),
+          name: resolveRejectedText(debugReason, face),
           state: 'rejected',
           failCount: REJECT_FAIL_THRESHOLD,
           expiry: now + REJECT_TTL_MS,
@@ -422,7 +424,7 @@ export function DiemDanhWebcamPage() {
       const nextFailCount = (prev?.failCount ?? 0) + 1;
       if (nextFailCount >= REJECT_FAIL_THRESHOLD) {
         labels.set(key, {
-          name: resolveRejectedText(debugReason),
+          name: resolveRejectedText(debugReason, face),
           state: 'rejected',
           failCount: nextFailCount,
           expiry: now + REJECT_TTL_MS,
@@ -475,7 +477,7 @@ export function DiemDanhWebcamPage() {
           width: Number(raw.width),
           height: Number(raw.height),
         },
-        { padX: 0.20, padTop: 0.40, padBottom: 0.20 },
+        { padX: 0.60, padTop: 0.60, padBottom: 0.60 },
       );
 
       const cx = expanded.xCenter * vw;
