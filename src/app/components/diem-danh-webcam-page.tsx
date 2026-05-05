@@ -107,8 +107,9 @@ function resolveBoxFrameClass(state: DrawFaceBox['state']): string {
 }
 
 function resolveRejectedText(debugReason?: string): string {
-  if (debugReason === 'not_enrolled_in_session') return 'Khong thuoc lop dang diem danh';
-  return 'Khong dung SV trong lop';
+  if (debugReason === 'spoof_detected') return 'Phát hiện giả mạo!';
+  if (debugReason === 'not_enrolled_in_session') return 'Không thuộc lớp này';
+  return 'Chưa nhận diện được';
 }
 
 function resolveBoxLabelClass(state: DrawFaceBox['state']): string {
@@ -474,7 +475,7 @@ export function DiemDanhWebcamPage() {
           width: Number(raw.width),
           height: Number(raw.height),
         },
-        { padX: 0.26, padTop: 0.55, padBottom: 0.25 },
+        { padX: 0.20, padTop: 0.40, padBottom: 0.20 },
       );
 
       const cx = expanded.xCenter * vw;
