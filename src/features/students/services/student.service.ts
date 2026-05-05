@@ -6,6 +6,7 @@ import type {
   LopHanhChinhOption,
   StudentFaceItem,
   StudentImportResult,
+  StudentFaceUploadResult,
   StudentStats,
   PaginatedResult,
 } from "../types";
@@ -46,7 +47,16 @@ export interface IStudentService {
   deleteFace(studentId: string, faceId: string): Promise<void>;
 
   /** Upload nhiều file ảnh khuôn mặt (và train embedding) */
-  uploadFaceFiles(studentId: string, files: File[]): Promise<any>;
+  uploadFaceFiles(
+    studentId: string,
+    files: File[],
+  ): Promise<StudentFaceUploadResult>;
+
+  /** Upload video khuôn mặt để backend trích frame và train embedding */
+  uploadFaceVideo(
+    studentId: string,
+    video: File,
+  ): Promise<StudentFaceUploadResult>;
 
   /** Import danh sách từ file Excel */
   importFromExcel(file: File): Promise<StudentImportResult>;

@@ -8,6 +8,7 @@ import type {
   PaginatedResult,
   SinhVien,
   StudentFaceItem,
+  StudentFaceUploadResult,
   StudentFilter,
   StudentImportResult,
   StudentStats,
@@ -351,7 +352,10 @@ export const studentApi: IStudentService = {
     });
     await parseEnvelope<null>(res);
   },
-  async uploadFaceFiles(studentId: string, files: File[]): Promise<any> {
+  async uploadFaceFiles(
+    studentId: string,
+    files: File[],
+  ): Promise<StudentFaceUploadResult> {
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     const res = await fetch(`${API_URL}/${studentId}/faces/upload`, {
@@ -359,7 +363,22 @@ export const studentApi: IStudentService = {
       headers: getAuthHeaders(), // KHÔNG set Content-Type, để browser tự set
       body: formData,
     });
-    const payload = await parseEnvelope<any>(res);
+    const payload = await parseEnvelope<StudentFaceUploadResult>(res);
+    return payload.data;
+  },
+
+  async uploadFaceVideo(
+    studentId: string,
+    video: File,
+  ): Promise<StudentFaceUploadResult> {
+    const formData = new FormData();
+    formData.append("video", video, video.name);
+    const res = await fetch(`${API_URL}/${studentId}/faces/upload-video`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    const payload = await parseEnvelope<StudentFaceUploadResult>(res);
     return payload.data;
   },
 };
