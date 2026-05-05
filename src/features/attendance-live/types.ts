@@ -43,6 +43,8 @@ export interface AttendanceLiveFace {
   full_name?: string;
   confidence?: number;
   already_marked?: boolean;
+  is_spoof?: boolean;
+  liveness_score?: number;
   status?: 'focusing' | 'confirming' | 'unknown';
   confirm_hits?: number;
   confirm_required?: number;
@@ -53,6 +55,10 @@ export interface AttendanceLiveFace {
     h?: number;
     xCenter?: number;
     yCenter?: number;
+  };
+  debug?: {
+    reason?: string;
+    [key: string]: any;
   };
 }
 
